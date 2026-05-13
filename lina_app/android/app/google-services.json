@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "146150107054",
+    "project_id": "lina-ad203",
+    "storage_bucket": "lina-ad203.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:146150107054:android:45a554ecf50cb042a28a3f",
+        "android_client_info": {
+          "package_name": "bayserk.lina"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqAkMHWzUkVGWKKJ0dJ66z-Kl5GC_F0dk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
