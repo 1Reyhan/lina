@@ -1,21 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SellerModel {
-  final String uid; // ref -> users
-  final String storeName; // Mağaza Adı
-  final String logoURL; // Logo Bağlantısı
-  final String bannerURL; // Mağaza Kapak Görseli
-  final String description; // Mağaza Açıklaması
-  final String city; // Şehir
-  final String district; // İlçe
-  final GeoPoint? geoPoint; // Konum Koordinatları
-  final double rating; // Mağaza Puanı 0-5
-  final int reviewCount; // Değerlendirme Sayısı
-  final int totalSales; // Toplam Satış Sayısı
-  final bool isApproved; // Onaylı Satıcı mı?
-  final bool isOpen; // Mağaza Şu An Açık mı?
-  final String bankIBAN; // Şifrelenmiş IBAN
-  final DateTime createdAt; // Kayıt Tarihi
+  final String uid;
+  final String storeName;
+  final String logoURL;
+  final String bannerURL;
+  final String description;
+  final String city;
+  final String district;
+  final GeoPoint? geoPoint;
+  final double rating;
+  final int reviewCount;
+  final int totalSales;
+  final bool isApproved;
+  final bool isOpen;
+  final String bankIBAN;
+  final String sellerType; // 'bireysel_üretici' | 'yerel_market' | 'kurumsal'
+  final DateTime createdAt;
 
   SellerModel({
     required this.uid,
@@ -32,6 +33,7 @@ class SellerModel {
     this.isApproved = false,
     this.isOpen = true,
     this.bankIBAN = '',
+    required this.sellerType,
     required this.createdAt,
   });
 
@@ -52,6 +54,7 @@ class SellerModel {
       isApproved: data['isApproved'] ?? false,
       isOpen: data['isOpen'] ?? true,
       bankIBAN: data['bankIBAN'] ?? '',
+      sellerType: data['sellerType'] ?? 'bireysel_üretici',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
     );
   }
@@ -72,6 +75,7 @@ class SellerModel {
       'isApproved': isApproved,
       'isOpen': isOpen,
       'bankIBAN': bankIBAN,
+      'sellerType': sellerType,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
