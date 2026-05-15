@@ -133,7 +133,7 @@ class ProductCard extends StatelessWidget {
               top: 8,
               right: 8,
               child: _scoreBadge(
-                Icons.leaf_round_outlined,
+                Icons.eco,
                 product.carbonScore.toStringAsFixed(0),
                 Colors.green.shade600,
               ),
