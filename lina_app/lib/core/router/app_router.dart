@@ -39,7 +39,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Giriş yapmış kullanıcı login/register sayfalarındaysa (Splash hariç) ana akışa dön
       if (isAuth && isOnAuth && state.matchedLocation != '/splash') {
-        return null; // Yönlendirme kararını Splash Screen içindeki rol kontrolü versin
+        return null; // Yönlendirme kararını Splash Screen içindeki rol kontrolü versin araya mağaza oluşturduktan sonra onay sayfası ekliceksin bunu en son admin sayfasında yap ki onay oraya gitsin!!!
       }
 
       return null;
