@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/profile_providers.dart';
-import '../data/profile_repository.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../../shared/models/user_profile_model.dart';
 
