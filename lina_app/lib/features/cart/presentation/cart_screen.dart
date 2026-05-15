@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/cart_providers.dart';
-import '../data/cart_repository.dart';
 import '../../../shared/models/cart_model.dart';
 
 class CartScreen extends ConsumerWidget {
@@ -40,9 +39,14 @@ class CartScreen extends ConsumerWidget {
             return _buildEmptyCart(context);
           }
 
-          final uid = FirebaseAuth.instance.currentUser?.uid;
-          if (uid == null)
-            return const Center(child: Text('Lütfen giriş yapın'));
+          final user = FirebaseAuth.instance.currentUser;
+
+          // GÜVENLİ KONTROL: Kullanıcı yoksa uyarı ver
+          if (user == null) {
+            return const Center(child: Text('Lütfen önce giriş yapın.'));
+          }
+
+          final uid = user.uid;
 
           return Column(
             children: [
@@ -65,53 +69,7 @@ class CartScreen extends ConsumerWidget {
     );
   }
 
-  // Boş Sepet Tasarımı
-  Widget _buildEmptyCart(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.green.shade50,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.shopping_basket_outlined,
-              size: 80,
-              color: Colors.green.shade300,
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Sepetiniz şu an boş',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Sağlıklı ürünleri keşfetmeye ne dersiniz?',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () => context.go('/home'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade700,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-            ),
-            child: const Text('Alışverişe Başla'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Alt Toplam ve Satın Al Butonu
+  // Alt Kısım: Toplam Tutar ve Buton
   Widget _buildCheckoutSection(BuildContext context, CartModel cart) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
@@ -169,9 +127,34 @@ class CartScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _buildEmptyCart(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.shopping_basket_outlined,
+            size: 80,
+            color: Colors.grey.shade300,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Sepetiniz boş',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => context.go('/home'),
+            child: const Text('Alışverişe Dön'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-// Sepet Ürün Satırı (Daha düzenli olması için ayrı widget yapıldı)
+// Ürün Kartı Widget'ı
 class _CartItemTile extends ConsumerWidget {
   final CartItemModel item;
   final String uid;
@@ -184,86 +167,69 @@ class _CartItemTile extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
         children: [
+          // Görsel
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child:
                 item.image.isNotEmpty
                     ? Image.network(
                       item.image,
-                      width: 70,
-                      height: 70,
+                      width: 60,
+                      height: 60,
                       fit: BoxFit.cover,
                     )
                     : Container(
-                      width: 70,
-                      height: 70,
+                      width: 60,
+                      height: 60,
                       color: Colors.grey.shade100,
-                      child: const Icon(Icons.image_not_supported),
                     ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
+          // İsim ve Fiyat
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   item.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 4),
                 Text(
                   '₺${item.price.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: Colors.green.shade700,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(color: Colors.green.shade700),
                 ),
               ],
             ),
           ),
-          _buildQtyController(ref),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQtyController(WidgetRef ref) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          _QtyButton(
-            icon: Icons.remove,
-            onTap: () {
-              ref
-                  .read(cartRepositoryProvider)
-                  .updateQuantity(uid, item.productId, item.quantity - 1);
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              '${item.quantity}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          _QtyButton(
-            icon: Icons.add,
-            onTap: () {
-              ref
-                  .read(cartRepositoryProvider)
-                  .updateQuantity(uid, item.productId, item.quantity + 1);
-            },
+          // Miktar Kontrolü
+          Row(
+            children: [
+              _QtyBtn(
+                icon: Icons.remove,
+                onTap:
+                    () => ref
+                        .read(cartRepositoryProvider)
+                        .updateQuantity(uid, item.productId, item.quantity - 1),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  '${item.quantity}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              _QtyBtn(
+                icon: Icons.add,
+                onTap:
+                    () => ref
+                        .read(cartRepositoryProvider)
+                        .updateQuantity(uid, item.productId, item.quantity + 1),
+              ),
+            ],
           ),
         ],
       ),
@@ -271,19 +237,23 @@ class _CartItemTile extends ConsumerWidget {
   }
 }
 
-class _QtyButton extends StatelessWidget {
+class _QtyBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _QtyButton({required this.icon, required this.onTap});
+  const _QtyBtn({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Icon(icon, size: 18, color: Colors.green.shade800),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16),
       ),
     );
   }
