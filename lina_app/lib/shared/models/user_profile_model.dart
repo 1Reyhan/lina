@@ -25,6 +25,23 @@ class UserProfileModel {
     required this.updatedAt,
   });
 
+  // BURAYA EKLENDİ: Firestore'dan gelen veriyi modele çevirir
+  factory UserProfileModel.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>? ?? {};
+    return UserProfileModel(
+      uid: doc.id,
+      allergies: List<String>.from(d['allergies'] ?? []),
+      dietTypes: List<String>.from(d['dietTypes'] ?? []),
+      healthConditions: List<String>.from(d['healthConditions'] ?? []),
+      portionSize: d['portionSize'] ?? 2,
+      addresses: List<Map<String, dynamic>>.from(d['addresses'] ?? []),
+      defaultAddressId: d['defaultAddressId'] ?? '',
+      loyaltyPoints: d['loyaltyPoints'] ?? 0,
+      smartReplenishEnabled: d['smartReplenishEnabled'] ?? false,
+      updatedAt: (d['updatedAt'] as Timestamp? ?? Timestamp.now()).toDate(),
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
