@@ -6,13 +6,19 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
-import '../../features/auth/presentation/user_register_screen.dart'; // Yeni eklendi
+import '../../features/auth/presentation/user_register_screen.dart';
 import '../../features/auth/presentation/seller_register_screen.dart';
-
-// Diğer Özellik Ekranları
-import '../../features/home/presentation/home_screen.dart';
-import '../../features/seller/presentation/seller_dashboard_screen.dart';
 import '../../features/auth/providers/auth_providers.dart';
+
+// Yeni Eklenen Özellik Ekranları
+import '../../features/home/presentation/home_screen.dart';
+import '../../features/home/presentation/product_detail_screen.dart';
+import '../../features/cart/presentation/cart_screen.dart';
+import '../../features/cart/presentation/checkout_screen.dart';
+import '../../features/orders/presentation/orders_screen.dart';
+import '../../features/orders/presentation/order_detail_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/seller/presentation/seller_dashboard_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -32,25 +38,51 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/splash';
 
       // Giriş yapmamış kullanıcı ve korumalı bir sayfaya gitmeye çalışıyorsa
-      // Not: /home sayfasını misafir girişi için açık bıraktığımızdan onuisOnAuth gibi düşünebiliriz
-      if (!isAuth && !isOnAuth && state.matchedLocation != '/home') {
+      // /home ve /product/:id misafirler için açık kalabilir
+      final isPublicPage =
+          state.matchedLocation == '/home' ||
+          state.matchedLocation.startsWith('/product/');
+
+      if (!isAuth && !isOnAuth && !isPublicPage) {
         return '/login';
       }
 
-      // Giriş yapmış kullanıcı login/register sayfalarındaysa (Splash hariç) ana akışa dön
+      // Giriş yapmış kullanıcıyı login/register sayfalarından uzaklaştır
       if (isAuth && isOnAuth && state.matchedLocation != '/splash') {
-        return null; // Yönlendirme kararını Splash Screen içindeki rol kontrolü versin araya mağaza oluşturduktan sonra onay sayfası ekliceksin bunu en son admin sayfasında yap ki onay oraya gitsin!!!
+        return '/home'; // Veya Splash içindeki rol kontrolüne bırakılabilir
       }
 
       return null;
     },
     routes: [
-      // Temel Rotalar
+      // --- Temel & Ürün Rotaları ---
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+      GoRoute(
+        path: '/product/:id',
+        builder:
+            (_, state) =>
+                ProductDetailScreen(productId: state.pathParameters['id']!),
+      ),
 
-      // Kayıt Akışı Rotaları
+      // --- Sepet & Ödeme Rotaları ---
+      GoRoute(path: '/cart', builder: (_, __) => const CartScreen()),
+      GoRoute(path: '/checkout', builder: (_, __) => const CheckoutScreen()),
+
+      // --- Sipariş Rotaları ---
+      GoRoute(path: '/orders', builder: (_, __) => const OrdersScreen()),
+      GoRoute(
+        path: '/orders/:id',
+        builder:
+            (_, state) =>
+                OrderDetailScreen(orderId: state.pathParameters['id']!),
+      ),
+
+      // --- Profil Rotaları ---
+      GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+
+      // --- Kayıt Akışı Rotaları ---
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(
         path: '/register/user',
@@ -61,7 +93,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const SellerRegisterScreen(),
       ),
 
-      // Onay Bekleme Sayfası (Geçici UI)
+      // --- Satıcı Rotaları ---
       GoRoute(
         path: '/seller/pending',
         builder:
@@ -80,12 +112,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                       SizedBox(height: 12),
                       Text(
-                        'Mağazanız incelendikten sonra aktif edilecek. '
-                        'Genellikle 24 saat içinde sonuçlanır.',
+                        'Mağazanız incelendikten sonra aktif edilecek. Genellikle 24 saat içinde sonuçlanır.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey),
                       ),
@@ -95,8 +125,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ),
       ),
-
-      // Satıcı Dashboard
       GoRoute(
         path: '/seller/dashboard',
         builder: (_, __) => const SellerDashboardScreen(),
