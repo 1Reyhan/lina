@@ -38,7 +38,15 @@ class SellerModel {
   });
 
   factory SellerModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+
+    // Güvenli Timestamp dönüşümü (Çökmeyi önler)
+    final createdAtTimestamp = data['createdAt'] as Timestamp?;
+    final parsedDate =
+        createdAtTimestamp != null
+            ? createdAtTimestamp.toDate()
+            : DateTime.now();
+
     return SellerModel(
       uid: doc.id,
       storeName: data['storeName'] ?? '',
@@ -47,7 +55,7 @@ class SellerModel {
       description: data['description'] ?? '',
       city: data['city'] ?? '',
       district: data['district'] ?? '',
-      geoPoint: data['geoPoint'],
+      geoPoint: data['geoPoint'] as GeoPoint?,
       rating: (data['rating'] ?? 0.0).toDouble(),
       reviewCount: data['reviewCount'] ?? 0,
       totalSales: data['totalSales'] ?? 0,
@@ -55,13 +63,12 @@ class SellerModel {
       isOpen: data['isOpen'] ?? true,
       bankIBAN: data['bankIBAN'] ?? '',
       sellerType: data['sellerType'] ?? 'bireysel_üretici',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      createdAt: parsedDate,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'uid': uid,
       'storeName': storeName,
       'logoURL': logoURL,
       'bannerURL': bannerURL,
