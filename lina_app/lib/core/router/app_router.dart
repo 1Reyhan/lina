@@ -1,6 +1,8 @@
+import 'dart:async'; // StreamSubscription hatasını çözer
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // FirebaseAuth hatasını çözer
 
 // Auth Ekranları
 import '../../features/auth/presentation/splash_screen.dart';
@@ -21,35 +23,45 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/seller/presentation/seller_dashboard_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
-
   return GoRouter(
     initialLocation: '/splash',
+    // Riverpod 2.x+ için linter uyarısı vermeyen en güncel dinleme yapısı
+    refreshListenable: GoRouterRefreshStream(
+      Stream.fromFuture(ref.watch(authStateProvider.future)),
+    ),
     redirect: (context, state) async {
-      final user = authState.valueOrNull;
+      // Anlık kullanıcıyı Firebase Auth üzerinden güvenli şekilde alıyoruz
+      final user = FirebaseAuth.instance.currentUser;
       final isAuth = user != null;
+
+      final String currentLoc = state.matchedLocation;
 
       // Auth ile ilgili rotalar
       final isOnAuth =
-          state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register' ||
-          state.matchedLocation == '/register/user' ||
-          state.matchedLocation == '/register/seller' ||
-          state.matchedLocation == '/splash';
+          currentLoc == '/login' ||
+          currentLoc == '/register' ||
+          currentLoc == '/register/user' ||
+          currentLoc == '/register/seller' ||
+          currentLoc == '/splash';
 
-      // Giriş yapmamış kullanıcı ve korumalı bir sayfaya gitmeye çalışıyorsa
-      // /home ve /product/:id misafirler için açık kalabilir
+      // Herkese açık sayfalar
       final isPublicPage =
-          state.matchedLocation == '/home' ||
-          state.matchedLocation.startsWith('/product/');
+          currentLoc == '/home' || currentLoc.startsWith('/product/');
 
+      // 1. Durum: Giriş yapmamış kullanıcı korumalı sayfaya gitmeye çalışıyorsa -> Login'e at
       if (!isAuth && !isOnAuth && !isPublicPage) {
         return '/login';
       }
 
-      // Giriş yapmış kullanıcıyı login/register sayfalarından uzaklaştır
-      if (isAuth && isOnAuth && state.matchedLocation != '/splash') {
-        return '/home'; // Veya Splash içindeki rol kontrolüne bırakılabilir
+      // 2. Durum: Giriş yapmış kullanıcı zaten içeride bir sayfaya gidiyorsa (Örn: satıcı paneli)
+      // GoRouter'ın onu zorla başa /splash'e atmasını ENGELLİYORUZ. Gittiği sayfada kalsın.
+      if (isAuth && !isOnAuth) {
+        return null;
+      }
+
+      // 3. Durum: Giriş yapmış kullanıcı yanlışlıkla hala login/register sayfalarındaysa
+      if (isAuth && isOnAuth && currentLoc != '/splash') {
+        return '/splash';
       }
 
       return null;
@@ -132,3 +144,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+// GoRouter'ın akışı doğru dinlemesi için yardımcı sınıf
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<dynamic> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}

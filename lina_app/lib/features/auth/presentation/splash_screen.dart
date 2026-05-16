@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Canlı kontrol için ekrana eklendi
 import 'dart:math' as math;
 import '../providers/auth_providers.dart';
 
@@ -15,7 +16,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
 
-  // Artırılmış ve ekran geneline yayılmış dinamik patlama merkezleri
   final List<Offset> _particlePositions = [
     const Offset(0.12, 0.15),
     const Offset(0.85, 0.12),
@@ -31,7 +31,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     const Offset(0.90, 0.45),
   ];
 
-  // Estetik ikon havuzu
   final List<String> _burstIcons = [
     '🍲',
     '🥑',
@@ -53,9 +52,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(
-        seconds: 4,
-      ), // Daha akıcı bir döngü için süreyi biraz uzattık
+      duration: const Duration(seconds: 4),
     )..repeat();
 
     _navigate();
@@ -67,29 +64,42 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.dispose();
   }
 
-  // ORIJINAL YÖNLENDİRME MEKANİZMASI (DOKUNULMADI)
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(seconds: 3));
+    // 1. ADIM: Oturum durumunu saniyeler kaybetmeden canlı kontrol et
+    final user = FirebaseAuth.instance.currentUser;
+
+    // EĞER KULLANICI ZATEN GİRİŞ YAPMIŞSA: 2 saniyelik animasyon beklemesini ATLA (Bypass et)!
+    if (user != null) {
+      try {
+        final role = await ref
+            .read(authRepositoryProvider)
+            .getUserRole(user.uid);
+        if (!mounted) return;
+
+        switch (role) {
+          case 'seller':
+            context.go('/seller/dashboard');
+            return; // Fonksiyonu bitir, alttaki delayed satırına uğrama!
+          case 'admin':
+            context.go('/home');
+            return;
+          default:
+            context.go('/home');
+            return;
+        }
+      } catch (e) {
+        debugPrint("Splash hızlı yönlendirme hatası: $e");
+      }
+    }
+
+    // 2. ADIM: Eğer aktif oturum yoksa (Uygulama ilk defa açılıyorsa)
+    // O muhteşem animasyonun görünmesi için normal şekilde 2 saniye beklet
+    await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
-    final user = ref.read(authStateProvider).valueOrNull;
     if (user == null) {
       context.go('/home');
       return;
-    }
-
-    final role = await ref.read(authRepositoryProvider).getUserRole(user.uid);
-    if (!mounted) return;
-
-    switch (role) {
-      case 'seller':
-        context.go('/seller/dashboard');
-        break;
-      case 'admin':
-        context.go('/home');
-        break;
-      default:
-        context.go('/home');
     }
   }
 

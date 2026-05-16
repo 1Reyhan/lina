@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Canlı kontrol için eklendi
 import '../providers/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -26,27 +27,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+
     try {
+      // 1. Firebase ile giriş yapılıyor
       await ref
           .read(authRepositoryProvider)
           .signIn(
             email: _emailCtrl.text.trim(),
             password: _passCtrl.text.trim(),
           );
-      // Giriş başarılı → splash role'ü okuyup yönlendirir
-      if (mounted) context.go('/splash');
+
+      if (!mounted) return;
+
+      // 2. Canlı kullanıcı kontrolü
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null) {
+        // 3. Rolü çek
+        final role = await ref
+            .read(authRepositoryProvider)
+            .getUserRole(user.uid);
+
+        if (!mounted) return;
+
+        // 4. Doğrudan hedefe yönlendir
+        if (role == 'seller') {
+          context.go('/seller/dashboard');
+        } else {
+          context.go('/home');
+        }
+        return;
+      } else {
+        context.go('/home');
+        return;
+      }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'E-posta veya şifre hatalı';
       });
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
