@@ -6,8 +6,8 @@ class OrderModel {
   final String userId;
   final String sellerId;
   final List<CartItemModel> items;
-  final String status;
-  // 'pending'|'confirmed'|'preparing'|'shipped'|'delivered'|'cancelled'
+  final String
+  status; // 'pending'|'confirmed'|'preparing'|'shipped'|'delivered'|'cancelled'
   final Map<String, dynamic> deliveryAddress;
   final double totalAmount;
   final double discountAmount;
@@ -37,16 +37,34 @@ class OrderModel {
     required this.updatedAt,
   });
 
+  double get effectivePrice => totalAmount - discountAmount;
+
   factory OrderModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+    final d = doc.data() as Map<String, dynamic>? ?? {};
+
+    // Güvenli sepet öğeleri haritalaması
+    List<CartItemModel> parsedItems = [];
+    if (d['items'] != null && d['items'] is List) {
+      try {
+        parsedItems =
+            (d['items'] as List<dynamic>).map((e) {
+              return CartItemModel.fromMap(Map<String, dynamic>.from(e as Map));
+            }).toList();
+      } catch (e) {
+        print('faz3: Sipariş ürünleri ayrıştırılırken hata: $e');
+      }
+    }
+
+    // Güvenli zaman damgası dönüşümleri
+    final createdAtTimestamp = d['createdAt'] as Timestamp?;
+    final updatedAtTimestamp = d['updatedAt'] as Timestamp?;
+    final estimatedDeliveryTimestamp = d['estimatedDelivery'] as Timestamp?;
+
     return OrderModel(
       orderId: doc.id,
       userId: d['userId'] ?? '',
       sellerId: d['sellerId'] ?? '',
-      items:
-          (d['items'] as List<dynamic>? ?? [])
-              .map((e) => CartItemModel.fromMap(e as Map<String, dynamic>))
-              .toList(),
+      items: parsedItems,
       status: d['status'] ?? 'pending',
       deliveryAddress: Map<String, dynamic>.from(d['deliveryAddress'] ?? {}),
       totalAmount: (d['totalAmount'] ?? 0).toDouble(),
@@ -55,12 +73,15 @@ class OrderModel {
       paymentStatus: d['paymentStatus'] ?? 'pending',
       couponCode: d['couponCode'] ?? '',
       deliveryNote: d['deliveryNote'] ?? '',
-      estimatedDelivery:
-          d['estimatedDelivery'] != null
-              ? (d['estimatedDelivery'] as Timestamp).toDate()
-              : null,
-      createdAt: (d['createdAt'] as Timestamp? ?? Timestamp.now()).toDate(),
-      updatedAt: (d['updatedAt'] as Timestamp? ?? Timestamp.now()).toDate(),
+      estimatedDelivery: estimatedDeliveryTimestamp?.toDate(),
+      createdAt:
+          createdAtTimestamp != null
+              ? createdAtTimestamp.toDate()
+              : DateTime.now(),
+      updatedAt:
+          updatedAtTimestamp != null
+              ? updatedAtTimestamp.toDate()
+              : DateTime.now(),
     );
   }
 
@@ -82,6 +103,6 @@ class OrderModel {
             : null,
     'createdAt': Timestamp.fromDate(createdAt),
     'updatedAt':
-        FieldValue.serverTimestamp(), // Kayıt anında sunucu saatini kullanır
+        FieldValue.serverTimestamp(), // Güncelleme anında sunucu saatini tetikler
   };
 }
