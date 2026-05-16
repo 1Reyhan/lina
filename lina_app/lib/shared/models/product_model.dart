@@ -50,7 +50,15 @@ class ProductModel {
   bool get hasDiscount => discountPrice > 0 && discountPrice < price;
 
   factory ProductModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+    final d = doc.data() as Map<String, dynamic>? ?? {};
+
+    // Güvenli zaman damgası dönüşümü
+    final createdAtTimestamp = d['createdAt'] as Timestamp?;
+    final parsedDate =
+        createdAtTimestamp != null
+            ? createdAtTimestamp.toDate()
+            : DateTime.now();
+
     return ProductModel(
       productId: doc.id,
       sellerId: d['sellerId'] ?? '',
@@ -71,7 +79,7 @@ class ProductModel {
       healthScore: (d['healthScore'] ?? 0).toDouble(),
       carbonScore: (d['carbonScore'] ?? 0).toDouble(),
       isActive: d['isActive'] ?? true,
-      createdAt: (d['createdAt'] as Timestamp).toDate(),
+      createdAt: parsedDate,
     );
   }
 
