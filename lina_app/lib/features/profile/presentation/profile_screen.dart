@@ -56,8 +56,10 @@ class ProfileScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Profil yüklenemedi: $e')),
         data: (profile) {
-          if (profile == null)
+          // Linter hatasını önlemek için buraya süslü parantez eklendi ({})
+          if (profile == null) {
             return const Center(child: Text('Profil bulunamadı'));
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -124,6 +126,14 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   Widget _buildUserHeader(User? user, UserProfileModel profile) {
+    // Tanımsız 'name' hatasını çözmek ve çökmemek için e-posta kullanan güvenli harf mantığı
+    final String avatarLetter =
+        (user?.displayName != null && user!.displayName!.isNotEmpty)
+            ? user.displayName![0].toUpperCase()
+            : (user?.email != null && user!.email!.isNotEmpty
+                ? user.email![0].toUpperCase()
+                : 'L');
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -139,7 +149,7 @@ class ProfileScreen extends ConsumerWidget {
             radius: 35,
             backgroundColor: Colors.green.shade50,
             child: Text(
-              user?.displayName?[0].toUpperCase() ?? 'L',
+              avatarLetter,
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -153,7 +163,9 @@ class ProfileScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user?.displayName ?? 'Lina Kullanıcısı',
+                  user?.displayName != null && user!.displayName!.isNotEmpty
+                      ? user.displayName!
+                      : 'Lina Kullanıcısı',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -164,7 +176,6 @@ class ProfileScreen extends ConsumerWidget {
                   style: const TextStyle(color: Colors.grey, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
-                // Şemandaki loyaltyPoints alanı
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -266,7 +277,6 @@ class ProfileScreen extends ConsumerWidget {
     final newList = List<String>.from(currentList);
     newList.contains(item) ? newList.remove(item) : newList.add(item);
     ref.read(profileRepositoryProvider).updateProfile(uid, {field: newList});
-    // Stream kullandığımız için invalidate yapmaya gerek kalmayabilir ama garantiye alalım
     ref.invalidate(userProfileProvider);
   }
 
