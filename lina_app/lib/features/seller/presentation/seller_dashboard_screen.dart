@@ -16,23 +16,21 @@ class SellerDashboardScreen extends ConsumerWidget {
     final statsAsync = ref.watch(dashboardStatsProvider);
     final ordersAsync = ref.watch(sellerOrdersProvider);
 
+    // Lina Premium lüks koyu lacivert marka rengi
+    const Color premiumNavy = Color(0xFF041E31);
+
     return Scaffold(
       backgroundColor: const Color(
         0xFFF8FAFC,
-      ), // Modern, açık kurumsal arka plan
+      ), // Modern, açık kurumsal arka plan rengi
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
         surfaceTintColor: Colors.transparent,
-        // HATA 1 DÜZELTİLDİ: AppBar altındaki çizgi 'border' yerine 'shape' parametresi ile modernleştirildi
+        // AppBar altındaki ayraç çizgisine asil lacivert tonu yedirildi
         shape: Border(
-          bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant.withAlpha(
-              76,
-            ), // withOpacity yerine hassas ve güncel alt limit
-            width: 1,
-          ),
+          bottom: BorderSide(color: premiumNavy.withAlpha(35), width: 1),
         ),
         title: sellerAsync.when(
           data:
@@ -42,23 +40,23 @@ class SellerDashboardScreen extends ConsumerWidget {
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
                   fontFamily: 'Nunito',
+                  color: premiumNavy, // Başlık asil lüks lacivert yapıldı
                 ),
               ),
           loading:
               () => const Text(
                 'Yükleniyor...',
-                style: TextStyle(fontFamily: 'Nunito'),
+                style: TextStyle(fontFamily: 'Nunito', color: premiumNavy),
               ),
           error:
-              (_, __) =>
-                  const Text('Panel', style: TextStyle(fontFamily: 'Nunito')),
+              (_, __) => const Text(
+                'Panel',
+                style: TextStyle(fontFamily: 'Nunito', color: premiumNavy),
+              ),
         ),
         actions: [
           IconButton(
-            icon: Icon(
-              Icons.notifications_outlined,
-              color: theme.colorScheme.onSurface,
-            ),
+            icon: const Icon(Icons.notifications_outlined, color: premiumNavy),
             onPressed: () {},
           ),
           IconButton(
@@ -125,12 +123,12 @@ class SellerDashboardScreen extends ConsumerWidget {
               ),
 
               // 2. İSTATİSTİK KARTLARI ALANI
-              Text(
+              const Text(
                 'Genel Özet',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                  color: theme.colorScheme.onSurface,
+                  color: premiumNavy, // Bölüm başlığı asil renk yapıldı
                   fontFamily: 'Nunito',
                 ),
               ),
@@ -153,7 +151,8 @@ class SellerDashboardScreen extends ConsumerWidget {
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisSpacing: 14,
                       mainAxisSpacing: 14,
-                      childAspectRatio: 1.35,
+                      childAspectRatio:
+                          1.15, // Dikey taşmayı (RenderFlex Overflow) %100 engelleyen kusursuz oran
                       children: [
                         DashboardStatCard(
                           title: 'Günlük Kazanç',
@@ -186,12 +185,12 @@ class SellerDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 28),
 
               // 3. HIZLI İŞLEMLER BUTONLARI
-              Text(
+              const Text(
                 'Hızlı İşlemler',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                  color: theme.colorScheme.onSurface,
+                  color: premiumNavy,
                   fontFamily: 'Nunito',
                 ),
               ),
@@ -242,12 +241,12 @@ class SellerDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 28),
 
               // 4. SON SİPARİŞLER KATMANI
-              Text(
+              const Text(
                 'Son Siparişler',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                  color: theme.colorScheme.onSurface,
+                  color: premiumNavy,
                   fontFamily: 'Nunito',
                 ),
               ),
@@ -265,9 +264,9 @@ class SellerDashboardScreen extends ConsumerWidget {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: theme.colorScheme.outlineVariant.withAlpha(
-                            102,
-                          ),
+                          color: premiumNavy.withAlpha(
+                            40,
+                          ), // İnce asil koyu ayraç çizgisi
                         ),
                       ),
                       child: const Center(
@@ -312,23 +311,23 @@ class SellerDashboardScreen extends ConsumerWidget {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard_rounded),
+            icon: Icon(Icons.dashboard_outlined, color: premiumNavy),
+            selectedIcon: Icon(Icons.dashboard_rounded, color: premiumNavy),
             label: 'Panel',
           ),
           NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded),
+            icon: Icon(Icons.receipt_long_outlined, color: premiumNavy),
+            selectedIcon: Icon(Icons.receipt_long_rounded, color: premiumNavy),
             label: 'Siparişler',
           ),
           NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2_rounded),
+            icon: Icon(Icons.inventory_2_outlined, color: premiumNavy),
+            selectedIcon: Icon(Icons.inventory_2_rounded, color: premiumNavy),
             label: 'Ürünler',
           ),
           NavigationDestination(
-            icon: Icon(Icons.campaign_outlined),
-            selectedIcon: Icon(Icons.campaign_rounded),
+            icon: Icon(Icons.campaign_outlined, color: premiumNavy),
+            selectedIcon: Icon(Icons.campaign_rounded, color: premiumNavy),
             label: 'Kampanya',
           ),
         ],
@@ -360,10 +359,13 @@ class _ActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
+          // Aksiyon butonlarının kenar çizgilerine asil koyu lacivert soft bir geçiş olarak eklendi
+          border: Border.all(color: const Color(0xFF041E31).withAlpha(25)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(5),
+              color: const Color(
+                0xFF041E31,
+              ).withAlpha(6), // Koyu mavi bazlı yumuşak gölge
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),
@@ -415,6 +417,7 @@ class _RecentOrderTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = _statusColor[order.status] ?? Colors.grey;
+    const Color premiumNavy = Color(0xFF041E31);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -422,10 +425,12 @@ class _RecentOrderTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(
+          color: premiumNavy.withAlpha(20),
+        ), // İnce asil kenarlık
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(2),
+            color: premiumNavy.withAlpha(5),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -439,9 +444,10 @@ class _RecentOrderTile extends StatelessWidget {
               children: [
                 Text(
                   'Sipariş #${order.orderId.length > 8 ? order.orderId.substring(0, 8).toUpperCase() : order.orderId}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
+                    color:
+                        premiumNavy, // Sipariş ID başlığı asil lüks renk yapıldı
                     fontFamily: 'Nunito',
                   ),
                 ),
@@ -449,7 +455,7 @@ class _RecentOrderTile extends StatelessWidget {
                 Text(
                   '${order.items.length} Farklı Ürün',
                   style: TextStyle(
-                    color: theme.colorScheme.onSurface.withAlpha(102),
+                    color: premiumNavy.withAlpha(120),
                     fontSize: 12,
                     fontFamily: 'Nunito',
                   ),
@@ -459,7 +465,6 @@ class _RecentOrderTile extends StatelessWidget {
           ),
           Text(
             '₺${order.totalAmount.toStringAsFixed(2)}',
-            // HATA 2 VE 3 DÜZELTİLDİ: 'extrabold' kaldırıldı, yerine FontWeight.w800 getirildi ve const sabit yapısı düzeltildi
             style: const TextStyle(
               fontWeight: FontWeight.w800,
               color: Color(0xFF10B981),
@@ -477,7 +482,6 @@ class _RecentOrderTile extends StatelessWidget {
             ),
             child: Text(
               _statusLabel[order.status] ?? order.status,
-              // HATA 4 DÜZELTİLDİ: 'size' parametresi 'fontSize' olarak düzeltildi
               style: TextStyle(
                 color: color,
                 fontSize: 11,

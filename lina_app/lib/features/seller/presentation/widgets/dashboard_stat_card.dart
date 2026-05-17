@@ -18,21 +18,27 @@ class DashboardStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Lina Premium lüks koyu lacivert marka rengi
+    const Color premiumNavy = Color(0xFF041E31);
+
     return Container(
-      // Kartın dış sınırlarında modern eğim ve gölgelendirme
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      // Kart içi boşluk ayarı taşmaları engellemek için mükemmel şekilde optimize edildi
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(
           20,
-        ), // Daha yumuşak modern köşe ovali
+        ), // Yumuşak, modern ve lüks köşe yapısı
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.4),
-          width: 1,
+          // Kartların kenarlıklarında asil lacivert tonunun asil bir çizgisel geçişi
+          color: premiumNavy.withAlpha(40),
+          width: 1.1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: premiumNavy.withAlpha(
+              8,
+            ), // Lacivert bazlı derinlik veren şık gölge
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -42,66 +48,63 @@ class DashboardStatCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment:
             MainAxisAlignment
-                .spaceBetween, // Spacer yerine daha güvenli esnek dağılım
+                .spaceBetween, // İçerikleri üst ve alt sınırda dengeler
         children: [
-          // Üst Satır: İkon ve Tasarımsal Parıltı Çemberi
+          // Üst Bölüm: İkon ve Tasarımsal Nokta Parlaması
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(
-                    0.12,
-                  ), // Daha dolgun duran yumuşak opaklık
-                  shape:
-                      BoxShape
-                          .circle, // Kare yerine premium dairesel ikon yuvası
+                  color: color.withAlpha(30),
+                  shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: color, size: 22),
+                child: Icon(icon, color: color, size: 20),
               ),
-              // İleride buraya küçük bir yukarı/aşağı yüzdelik trend ikonu eklemek için alan bıraktık
               Container(
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.3),
+                  color: color.withAlpha(76),
                   shape: BoxShape.circle,
                 ),
               ),
             ],
           ),
 
-          // Alt Satır: İstatistik Değeri ve Başlık Alanı
+          // Alt Bölüm: İstatistik Değeri ve Kart Başlığı
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 12),
-              // Değer Kısmı (Ciro, Sipariş Sayısı vb.)
-              Text(
-                value,
-                maxLines: 1,
-                overflow:
-                    TextOverflow
-                        .ellipsis, // Büyük sayılarda yan yana taşmayı önler
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                  fontFamily:
-                      'Nunito', // Projenin ana font ailesi entegre edildi
-                  letterSpacing: -0.5,
+              const SizedBox(height: 6),
+              // Sayısal değerlerin hiçbir koşulda sığmayıp dikey taşma yapmaması için FittedBox sarmalı
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color:
+                        premiumNavy, // Değer sayıları asil marka lacivertine boyandı
+                    fontFamily: 'Nunito',
+                    letterSpacing: -0.5,
+                  ),
                 ),
               ),
-              const SizedBox(height: 2),
-              // Kart Başlığı (Bekleyen Siparişler vb.)
+              const SizedBox(height: 1),
+              // Kart Başlığı (Örn: Bugünkü Sipariş)
               Text(
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: theme.colorScheme.onSurface.withOpacity(0.5),
-                  fontSize: 13,
+                  color: premiumNavy.withAlpha(
+                    128,
+                  ), // Alt metinler asil rengin soft opaklığına büründü
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
                   fontFamily: 'Nunito',
                 ),
