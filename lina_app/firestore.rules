@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Kullanıcı Temel Bilgileri: Sadece hesabın kendi sahibi okur ve yazar
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    
+    // 2. Sağlık Profili & Alerjiler: Sadece ilgili kullanıcı okur ve yazar
+    match /userProfiles/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    
+    // 3. Satıcı Bilgileri: Ürün detaylarında satıcı adını göstermek için herkes okuyabilir, sadece satıcı kendi profilini günceller
+    match /sellers/{uid} {
+      allow read: if true; 
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+    
+    // 4. Ürünler: Giriş yapmayan misafirler dahil herkes ürünleri inceleyebilir, sadece girişli kullanıcılar (satıcılar) ürün ekleyebilir/düzenleyebilir
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // 5. Sepetler: Sadece sepetin asıl sahibi erişebilir
+    match /carts/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    
+    // 6. Siparişler: (KRİTİK DÜZELTME) Hem siparişi veren Müşteri (userId) hem de siparişi teslim edecek Satıcı (sellerId) okuyabilir ve güncelleyebilir
+    match /orders/{orderId} {
+      allow create: if request.auth != null;
+      
+      // Satıcının siparişleri listeleyebilmesi için sellerId kontrolü eklendi, yetki hatası böylece çözüldü!
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.sellerId == request.auth.uid
+      );
+      
+      // Sipariş durumunu (hazırlanıyor, yolda vb.) güncellemek için satıcı ve müşteriye izin verilir
+      allow update: if request.auth != null && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.sellerId == request.auth.uid
+      );
+    }
+    
+    // 7. Kampanyalar: Giriş yapmış tüm müşteriler kampanyaları okuyabilir, satıcılar kampanya oluşturabilir
+    match /campaigns/{campaignId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+  }
+}
