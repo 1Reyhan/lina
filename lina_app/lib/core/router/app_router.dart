@@ -1,8 +1,8 @@
-import 'dart:async'; // StreamSubscription hatasını çözer
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // FirebaseAuth hatasını çözer
+import 'package:firebase_auth/firebase_auth.dart';
 
 // Auth Ekranları
 import '../../features/auth/presentation/splash_screen.dart';
@@ -12,7 +12,7 @@ import '../../features/auth/presentation/user_register_screen.dart';
 import '../../features/auth/presentation/seller_register_screen.dart';
 import '../../features/auth/providers/auth_providers.dart';
 
-// Yeni Eklenen Özellik Ekranları
+// Özellik Ekranları
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/home/presentation/product_detail_screen.dart';
 import '../../features/cart/presentation/cart_screen.dart';
@@ -20,23 +20,26 @@ import '../../features/cart/presentation/checkout_screen.dart';
 import '../../features/orders/presentation/orders_screen.dart';
 import '../../features/orders/presentation/order_detail_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+
+// FAZ3: Satıcı Ekranları (Yönlendirmelerin çalışması için importlar eklendi)
 import '../../features/seller/presentation/seller_dashboard_screen.dart';
+import '../../features/seller/presentation/seller_orders_screen.dart';
+import '../../features/seller/presentation/seller_product_list_screen.dart';
+import '../../features/seller/presentation/seller_add_product_screen.dart';
+import '../../features/seller/presentation/seller_campaigns_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
-    // Riverpod 2.x+ için linter uyarısı vermeyen en güncel dinleme yapısı
     refreshListenable: GoRouterRefreshStream(
       Stream.fromFuture(ref.watch(authStateProvider.future)),
     ),
     redirect: (context, state) async {
-      // Anlık kullanıcıyı Firebase Auth üzerinden güvenli şekilde alıyoruz
       final user = FirebaseAuth.instance.currentUser;
       final isAuth = user != null;
-
       final String currentLoc = state.matchedLocation;
 
-      // Auth ile ilgili rotalar
+      // Auth ile ilgili rotalar listesi
       final isOnAuth =
           currentLoc == '/login' ||
           currentLoc == '/register' ||
@@ -48,20 +51,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isPublicPage =
           currentLoc == '/home' || currentLoc.startsWith('/product/');
 
-      // 1. Durum: Giriş yapmamış kullanıcı korumalı sayfaya gitmeye çalışıyorsa -> Login'e at
+      // 1. DURUM: Giriş yapmamış misafir kullanıcı korumalı sayfaya sızmaya çalışırsa -> /login
       if (!isAuth && !isOnAuth && !isPublicPage) {
         return '/login';
       }
 
-      // 2. Durum: Giriş yapmış kullanıcı zaten içeride bir sayfaya gidiyorsa (Örn: satıcı paneli)
-      // GoRouter'ın onu zorla başa /splash'e atmasını ENGELLİYORUZ. Gittiği sayfada kalsın.
+      // 2. DURUM: Kullanıcı zaten giriş yapmışsa ve içerideki sayfalardaysa
       if (isAuth && !isOnAuth) {
         return null;
       }
 
-      // 3. Durum: Giriş yapmış kullanıcı yanlışlıkla hala login/register sayfalarındaysa
+      // 3. DURUM: Kullanıcı zaten giriş yapmış ama hala login/register sayfalarında dolanıyorsa -> /home
       if (isAuth && isOnAuth && currentLoc != '/splash') {
-        return '/splash';
+        return '/home';
       }
 
       return null;
@@ -105,7 +107,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const SellerRegisterScreen(),
       ),
 
-      // --- Satıcı Rotaları ---
+      // --- Satıcı (Seller) Rotaları (FAZ3 EKSİK OLAN KISIM TAMAMLANDI) ---
+      GoRoute(
+        path: '/seller/dashboard',
+        builder: (_, __) => const SellerDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/seller/orders',
+        builder: (_, __) => const SellerOrdersScreen(),
+      ),
+      GoRoute(
+        path: '/seller/products',
+        builder: (_, __) => const SellerProductListScreen(),
+      ),
+      GoRoute(
+        path: '/seller/products/add',
+        builder: (_, __) => const SellerAddProductScreen(),
+      ),
+      GoRoute(
+        path: '/seller/campaigns',
+        builder: (_, __) => const SellerCampaignsScreen(),
+      ),
       GoRoute(
         path: '/seller/pending',
         builder:
@@ -137,15 +159,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ),
       ),
-      GoRoute(
-        path: '/seller/dashboard',
-        builder: (_, __) => const SellerDashboardScreen(),
-      ),
     ],
   );
 });
 
-// GoRouter'ın akışı doğru dinlemesi için yardımcı sınıf
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
