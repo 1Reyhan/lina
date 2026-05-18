@@ -97,8 +97,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             product.sellerId, // Ürünün gerçek satıcı kimliği eşleştiriliyor
         displayName: name,
         userPhotoURL: photo,
-        rating:
-            5.0, // Varsayılan puanlama (arka planda çalışmaya devam eder, arayüzde gizlidir)
+        rating: 5.0, // Varsayılan puanlama (arayüzde gizlidir)
         comment: commentText,
         createdAt: DateTime.now(),
       );
@@ -266,7 +265,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           _buildBesinDegerleri(product),
                           const SizedBox(height: 16),
 
-                          // 3. Sorular & Yorumlar Paneli (Puanlama kaldırıldı)
+                          // 3. Sorular & Yorumlar Paneli (Puanlama kaldırıldı ve ŞIK KAYDIRILABİLİR ALAN eklendi)
                           _buildReviewsSection(reviews, product),
                         ],
                       ),
@@ -771,7 +770,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
-  // Değerlendirmeler & Canlı Yorum Bölümü (Yıldızlı Puanlama Kaldırılmıştır)
+  // 🌟 DÜZELTİLDİ: Yorumların dikeyde sonsuz uzamasını önleyen, kendi içinde kaydırılabilir (Scrollable) premium alan!
   Widget _buildReviewsSection(List<ReviewModel> reviews, ProductModel product) {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -888,7 +887,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
           ],
 
           if (reviews.isEmpty)
@@ -908,157 +907,173 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               ),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: reviews.length,
-              separatorBuilder:
-                  (_, __) => const Divider(height: 24, thickness: 0.6),
-              itemBuilder: (context, idx) {
-                final rev = reviews[idx];
-                final dateStr = DateFormat('dd MMM yyyy').format(rev.createdAt);
+            // 🌟 320px Sınırlandırılmış ve Kendi İçinde Kaydırılabilir Liste Alanı (Sonsuz aşağı uzamayı önler)
+            Container(
+              constraints: const BoxConstraints(maxHeight: 320),
+              padding: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: softBackground.withValues(alpha: 0.4),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.all(12),
+                  itemCount: reviews.length,
+                  separatorBuilder:
+                      (_, __) => const Divider(height: 24, thickness: 0.6),
+                  itemBuilder: (context, idx) {
+                    final rev = reviews[idx];
+                    final dateStr = DateFormat(
+                      'dd MMM yyyy',
+                    ).format(rev.createdAt);
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: premiumNavy,
-                          backgroundImage:
-                              rev.userPhotoURL.isNotEmpty
-                                  ? NetworkImage(rev.userPhotoURL)
-                                  : null,
-                          child:
-                              rev.userPhotoURL.isEmpty
-                                  ? Text(
-                                    rev.displayName
-                                        .substring(0, 1)
-                                        .toUpperCase(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                  : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: premiumNavy,
+                              backgroundImage:
+                                  rev.userPhotoURL.isNotEmpty
+                                      ? NetworkImage(rev.userPhotoURL)
+                                      : null,
+                              child:
+                                  rev.userPhotoURL.isEmpty
+                                      ? Text(
+                                        rev.displayName
+                                            .substring(0, 1)
+                                            .toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      )
+                                      : null,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    rev.displayName,
-                                    style: const TextStyle(
-                                      fontFamily: 'Nunito',
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: premiumNavy,
-                                    ),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        rev.displayName,
+                                        style: const TextStyle(
+                                          fontFamily: 'Nunito',
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12.5,
+                                          color: premiumNavy,
+                                        ),
+                                      ),
+                                      Text(
+                                        dateStr,
+                                        style: TextStyle(
+                                          fontFamily: 'Nunito',
+                                          fontSize: 10.5,
+                                          color: premiumNavy.withValues(
+                                            alpha: 0.4,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                  const SizedBox(height: 4),
                                   Text(
-                                    dateStr,
+                                    rev.comment,
                                     style: TextStyle(
                                       fontFamily: 'Nunito',
-                                      fontSize: 11,
-                                      color: premiumNavy.withValues(alpha: 0.4),
+                                      fontSize: 12.5,
+                                      color: premiumNavy.withValues(alpha: 0.7),
+                                      height: 1.3,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                rev.comment,
-                                style: TextStyle(
-                                  fontFamily: 'Nunito',
-                                  fontSize: 13,
-                                  color: premiumNavy.withValues(alpha: 0.7),
-                                  height: 1.3,
+                            ),
+                          ],
+                        ),
+
+                        // 🏪 TRENDYOL TİPİ SATICI CEVABI GÖSTERİM KATMANI (Nested)
+                        if (rev.sellerReply != null &&
+                            rev.sellerReply!.trim().isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(left: 42, top: 10),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: premiumNavy.withValues(alpha: 0.03),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: premiumNavy.withValues(alpha: 0.05),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // 🏪 TRENDYOL TİPİ SATICI CEVABI GÖSTERİM KATMANI
-                    if (rev.sellerReply != null &&
-                        rev.sellerReply!.trim().isNotEmpty) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(left: 48, top: 12),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: premiumNavy.withValues(alpha: 0.03),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: premiumNavy.withValues(alpha: 0.05),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.storefront_rounded,
+                                        size: 12,
+                                        color: premiumGold,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      const Text(
+                                        'Satıcı Cevabı',
+                                        style: TextStyle(
+                                          fontFamily: 'Nunito',
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                          color: premiumNavy,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      if (rev.sellerReplyCreatedAt != null)
+                                        Text(
+                                          DateFormat(
+                                            'dd MMM yyyy',
+                                          ).format(rev.sellerReplyCreatedAt!),
+                                          style: TextStyle(
+                                            fontFamily: 'Nunito',
+                                            fontSize: 9.5,
+                                            color: premiumNavy.withValues(
+                                              alpha: 0.4,
+                                            ),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    rev.sellerReply!,
+                                    style: TextStyle(
+                                      fontFamily: 'Nunito',
+                                      fontSize: 12,
+                                      color: premiumNavy.withValues(alpha: 0.8),
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.storefront_rounded,
-                                    size: 14,
-                                    color: premiumGold,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  const Text(
-                                    'Satıcı Cevabı',
-                                    style: TextStyle(
-                                      fontFamily: 'Nunito',
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 12,
-                                      color: premiumNavy,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  if (rev.sellerReplyCreatedAt != null)
-                                    Text(
-                                      DateFormat(
-                                        'dd MMM yyyy',
-                                      ).format(rev.sellerReplyCreatedAt!),
-                                      style: TextStyle(
-                                        fontFamily: 'Nunito',
-                                        fontSize: 10,
-                                        color: premiumNavy.withValues(
-                                          alpha: 0.4,
-                                        ),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                rev.sellerReply!,
-                                style: TextStyle(
-                                  fontFamily: 'Nunito',
-                                  fontSize: 12.5,
-                                  color: premiumNavy.withValues(alpha: 0.8),
-                                  height: 1.35,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-              },
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ),
             ),
         ],
       ),
