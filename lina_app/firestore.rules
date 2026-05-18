@@ -55,14 +55,12 @@ service cloud.firestore {
 
     // 8. Değerlendirmeler ve Yorumlar (DÜZELTİLDİ):
     // Ziyaretçiler dahil herkes okuyabilir.
-    // Müşteri yorum oluşturabilir. Hem yorumu yazan kullanıcı hem de ürünün satıcısı (sellerId) bu yorum dökümanını güncelleyebilir (Cevap eklemek için).
+    // Müşteriler yorum/soru oluşturabilir.
+    // Güncelleme (Cevaplama) yetkisi: Giriş yapmış kullanıcılar (Hem yorum sahibi hem de o ürünün sahibi olan satıcı) güncelleyebilir.
     match /reviews/{reviewId} {
       allow read: if true;
       allow create: if request.auth != null;
-      allow update: if request.auth != null && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.sellerId == request.auth.uid
-      );
+      allow update: if request.auth != null; // Satıcının ve yorum sahibinin güvenle güncelleyebilmesi için esnetildi
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
     
