@@ -11,7 +11,6 @@ class SellerDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // build metoduna WidgetRef ref parametresi eklenerek geçersiz override hatası çözüldü.
     return const _SellerDashboardView();
   }
 }
@@ -42,7 +41,6 @@ class _SellerDashboardView extends ConsumerWidget {
         elevation: 0,
         centerTitle: false,
         surfaceTintColor: Colors.transparent,
-        // const anahtar kelimesi kaldırılarak dinamik withAlpha() metot çağrısı hatası çözüldü
         shape: Border(
           bottom: BorderSide(color: premiumNavy.withAlpha(25), width: 1),
         ),
@@ -246,40 +244,48 @@ class _SellerDashboardView extends ConsumerWidget {
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
-                      childAspectRatio:
-                          1.15, // Taşmayı engelleyen kusursuz oran korundu
+                      childAspectRatio: 1.15,
                       children: [
-                        DashboardStatCard(
-                          title: 'Günlük Kazanç',
-                          value:
-                              '₺${(stats['todayRevenue'] ?? 0).toStringAsFixed(0)}',
-                          icon: Icons.monetization_on_outlined,
-                          color: successGreen,
+                        // Kartları force-border (net asil mavi çerçeve) ile sarmaladık
+                        _buildDecoratedStatCard(
+                          child: DashboardStatCard(
+                            title: 'Günlük Kazanç',
+                            value:
+                                '₺${(stats['todayRevenue'] ?? 0).toStringAsFixed(0)}',
+                            icon: Icons.monetization_on_outlined,
+                            color: successGreen,
+                          ),
                         ),
-                        DashboardStatCard(
-                          title: 'Bugünkü Sipariş',
-                          value: '${stats['todayOrders'] ?? 0}',
-                          icon: Icons.shopping_bag_outlined,
-                          color: infoBlue,
+                        _buildDecoratedStatCard(
+                          child: DashboardStatCard(
+                            title: 'Bugünkü Sipariş',
+                            value: '${stats['todayOrders'] ?? 0}',
+                            icon: Icons.shopping_bag_outlined,
+                            color: infoBlue,
+                          ),
                         ),
-                        DashboardStatCard(
-                          title: 'Bekleyen Sipariş',
-                          value: '${stats['pendingOrders'] ?? 0}',
-                          icon: Icons.pending_actions_rounded,
-                          color: warningOrange,
+                        _buildDecoratedStatCard(
+                          child: DashboardStatCard(
+                            title: 'Bekleyen Sipariş',
+                            value: '${stats['pendingOrders'] ?? 0}',
+                            icon: Icons.pending_actions_rounded,
+                            color: warningOrange,
+                          ),
                         ),
-                        DashboardStatCard(
-                          title: 'Aktif Ürünler',
-                          value: '${stats['activeProducts'] ?? 0}',
-                          icon: Icons.grid_view_rounded,
-                          color: purpleTone,
+                        _buildDecoratedStatCard(
+                          child: DashboardStatCard(
+                            title: 'Aktif Ürünler',
+                            value: '${stats['activeProducts'] ?? 0}',
+                            icon: Icons.grid_view_rounded,
+                            color: purpleTone,
+                          ),
                         ),
                       ],
                     ),
               ),
               const SizedBox(height: 28),
 
-              // 3. HIZLI İŞLEMLER BUTONLARI (PREMIUM ÇERÇEVELİ)
+              // 3. HIZLI İŞLEMLER BUTONLARI
               Row(
                 children: [
                   Container(
@@ -402,8 +408,10 @@ class _SellerDashboardView extends ConsumerWidget {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: premiumNavy.withAlpha(20),
-                          width: 1.2,
+                          color: premiumNavy.withAlpha(
+                            80,
+                          ), // Net asil koyu mavi kenarlık
+                          width: 1.5,
                         ),
                       ),
                       child: const Center(
@@ -434,9 +442,7 @@ class _SellerDashboardView extends ConsumerWidget {
         elevation: 8,
         shadowColor: premiumNavy.withAlpha(100),
         surfaceTintColor: Colors.transparent,
-        indicatorColor: premiumNavy.withAlpha(
-          20,
-        ), // Seçilen sekmeyi sarmalayan lüks indikasyon halkası
+        indicatorColor: premiumNavy.withAlpha(20),
         onDestinationSelected: (i) {
           switch (i) {
             case 1:
@@ -473,6 +479,26 @@ class _SellerDashboardView extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // Dashboard Stat Card'ları net çerçeveyle çevreleyen metot
+  Widget _buildDecoratedStatCard({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: premiumNavy.withAlpha(
+            80,
+          ), // Net asil koyu mavi kenarlık (belirginleştirildi)
+          width: 1.5,
+        ),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: ClipRRect(borderRadius: BorderRadius.circular(16), child: child),
     );
   }
 
@@ -582,7 +608,8 @@ class _ActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: premiumNavy.withAlpha(20), width: 1.2),
+          // Hızlı işlemler kartlarının çevresi belirginleştirildi (width: 1.5, withAlpha: 80)
+          border: Border.all(color: premiumNavy.withAlpha(80), width: 1.5),
           boxShadow: [
             BoxShadow(
               color: premiumNavy.withAlpha(8),
@@ -605,7 +632,7 @@ class _ActionButton extends StatelessWidget {
             Text(
               label,
               style: const TextStyle(
-                color: premiumNavy, // Yazı rengi asil koyu lacivert yapıldı
+                color: premiumNavy,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'Nunito',
                 fontSize: 13,
@@ -640,7 +667,6 @@ class _RecentOrderTile extends StatelessWidget {
     'cancelled': Colors.red,
   };
 
-  // Tanımsız durum hatasını çözmek için sınıf içi asil renk paleti tanımlandı.
   static const Color premiumNavy = Color(0xFF041E31);
   static const Color successGreen = Color(0xFF10B981);
 
@@ -654,7 +680,8 @@ class _RecentOrderTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: premiumNavy.withAlpha(20), width: 1.2),
+        // Son siparişler kartlarının çevresi belirginleştirildi (width: 1.5, withAlpha: 80)
+        border: Border.all(color: premiumNavy.withAlpha(80), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: premiumNavy.withAlpha(5),
