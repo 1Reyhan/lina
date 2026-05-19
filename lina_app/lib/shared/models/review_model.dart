@@ -6,22 +6,16 @@ class ReviewModel {
   final String sellerId;
   final String productId;
   final String orderId;
-  final String
-  displayName; // 🌟 KORUNDU: UI'da her yorumun sahibini anında göstermek için gereklidir
-  final String userPhotoURL; // 🌟 KORUNDU: Kullanıcı avatarı için gereklidir
+  final String displayName;
+  final String userPhotoURL;
   final double rating;
   final String comment;
-  final List<String>
-  images; // 🌟 YENİ: Kullanıcının yoruma eklediği fotoğraflar
-  final String
-  aiSentiment; // 🌟 YENİ: Lina AI Duygu Analizi ('positive' | 'neutral' | 'negative')
-  final bool
-  isVerifiedPurchase; // 🌟 YENİ: Ürünü gerçekten satın alan doğrulanmış müşteri mi?
+  final List<String> images;
+  final String aiSentiment;
+  final bool isVerifiedPurchase;
   final DateTime createdAt;
-  final String?
-  sellerReply; // 🌟 KORUNDU: Trendyol stili satıcı cevaplama alanı
-  final DateTime?
-  sellerReplyCreatedAt; // 🌟 KORUNDU: Satıcının cevaplama tarihi
+  final String? sellerReply;
+  final DateTime? sellerReplyCreatedAt;
 
   ReviewModel({
     required this.reviewId,
@@ -40,72 +34,6 @@ class ReviewModel {
     this.sellerReply,
     this.sellerReplyCreatedAt,
   });
-
-  // 🌟 YENİ: Satıcı yoruma cevap verdiğinde modeli kolayca güncellemek için copyWith katmanı
-  ReviewModel copyWith({
-    String? reviewId,
-    String? userId,
-    String? sellerId,
-    String? productId,
-    String? orderId,
-    String? displayName,
-    String? userPhotoURL,
-    double? rating,
-    String? comment,
-    List<String>? images,
-    String? aiSentiment,
-    bool? isVerifiedPurchase,
-    DateTime? createdAt,
-    String? sellerReply,
-    DateTime? sellerReplyCreatedAt,
-  }) {
-    return ReviewModel(
-      reviewId: reviewId ?? this.reviewId,
-      userId: userId ?? this.userId,
-      sellerId: sellerId ?? this.sellerId,
-      productId: productId ?? this.productId,
-      orderId: orderId ?? this.orderId,
-      displayName: displayName ?? this.displayName,
-      userPhotoURL: userPhotoURL ?? this.userPhotoURL,
-      rating: rating ?? this.rating,
-      comment: comment ?? this.comment,
-      images: images ?? this.images,
-      aiSentiment: aiSentiment ?? this.aiSentiment,
-      isVerifiedPurchase: isVerifiedPurchase ?? this.isVerifiedPurchase,
-      createdAt: createdAt ?? this.createdAt,
-      sellerReply: sellerReply ?? this.sellerReply,
-      sellerReplyCreatedAt: sellerReplyCreatedAt ?? this.sellerReplyCreatedAt,
-    );
-  }
-
-  factory ReviewModel.fromFirestore(DocumentSnapshot doc) {
-    // 🌟 DÜZELTİLDİ: Boş döküman gelme olasılığına karşı null-safety koruması
-    final d = doc.data() as Map<String, dynamic>? ?? {};
-
-    final createdAtTimestamp = d['createdAt'] as Timestamp?;
-    final replyTimestamp = d['sellerReplyCreatedAt'] as Timestamp?;
-
-    return ReviewModel(
-      reviewId: doc.id,
-      userId: d['userId'] ?? '',
-      sellerId: d['sellerId'] ?? '',
-      productId: d['productId'] ?? '',
-      orderId: d['orderId'] ?? '',
-      displayName: d['displayName'] ?? 'Lina Kullanıcısı',
-      userPhotoURL: d['userPhotoURL'] ?? '',
-      rating: (d['rating'] ?? 5.0).toDouble(),
-      comment: d['comment'] ?? '',
-      images: List<String>.from(d['images'] ?? []),
-      aiSentiment: d['aiSentiment'] ?? 'neutral',
-      isVerifiedPurchase: d['isVerifiedPurchase'] ?? true,
-      createdAt:
-          createdAtTimestamp != null
-              ? createdAtTimestamp.toDate()
-              : DateTime.now(),
-      sellerReply: d['sellerReply'],
-      sellerReplyCreatedAt: replyTimestamp?.toDate(),
-    );
-  }
 
   Map<String, dynamic> toMap() => {
     'userId': userId,
@@ -126,4 +54,25 @@ class ReviewModel {
             ? Timestamp.fromDate(sellerReplyCreatedAt!)
             : null,
   };
+
+  factory ReviewModel.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>? ?? {};
+    return ReviewModel(
+      reviewId: doc.id,
+      userId: d['userId'] ?? '',
+      sellerId: d['sellerId'] ?? '',
+      productId: d['productId'] ?? '',
+      orderId: d['orderId'] ?? '',
+      displayName: d['displayName'] ?? 'Lina Kullanıcısı',
+      userPhotoURL: d['userPhotoURL'] ?? '',
+      rating: (d['rating'] ?? 5.0).toDouble(),
+      comment: d['comment'] ?? '',
+      images: List<String>.from(d['images'] ?? []),
+      aiSentiment: d['aiSentiment'] ?? 'neutral',
+      isVerifiedPurchase: d['isVerifiedPurchase'] ?? true,
+      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      sellerReply: d['sellerReply'],
+      sellerReplyCreatedAt: (d['sellerReplyCreatedAt'] as Timestamp?)?.toDate(),
+    );
+  }
 }
