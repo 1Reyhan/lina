@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/seller_providers.dart';
+import '../data/seller_order_repository.dart';
 import '../../../shared/models/campaign_model.dart';
+import '../../../shared/models/product_model.dart';
 
 class SellerCampaignsScreen extends ConsumerStatefulWidget {
   const SellerCampaignsScreen({super.key});
@@ -16,17 +18,34 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
   final _formKey = GlobalKey<FormState>();
   double _discountRate = 10;
   String _targetSegment = 'all';
+  String _type = 'discount';
+  final Set<String> _selectedProductIds = {};
   bool _loading = false;
 
-  // Marka renk kodları (Lina Premium Tasarım Dili)
-  static const Color premiumNavy = Color(
-    0xFF041E31,
-  ); // Ana asil koyu lacivert tonumuz
+  static const Color premiumNavy = Color(0xFF041E31); // Lina asil lacivert tonu
   static const Color premiumNavyLight = Color(0xFF0D324E);
   static const Color successGreen = Color(0xFF10B981);
   static const Color warningOrange = Color(0xFFF59E0B);
   static const Color dangerRed = Color(0xFFEF4444);
   static const Color softBackground = Color(0xFFF8FAFC);
+
+  static const _types = {
+    'discount': {
+      'title': 'İndirim',
+      'icon': Icons.percent_rounded,
+      'color': successGreen,
+    },
+    'bundle': {
+      'title': 'Paket Kampanyası',
+      'icon': Icons.inventory_2_rounded,
+      'color': warningOrange,
+    },
+    'lost_user': {
+      'title': 'Geri Kazan',
+      'icon': Icons.volunteer_activism_rounded,
+      'color': dangerRed,
+    },
+  };
 
   static const _segments = {
     'all': {
@@ -64,23 +83,23 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
     try {
       final uidAsync = ref.read(sellerUidProvider);
       final uid = uidAsync.valueOrNull;
-      if (uid == null) throw Exception('Oturum bulunamadı.');
+      if (uid == null)
+        throw Exception('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
 
       final campaign = CampaignModel(
         campaignId: '',
         sellerId: uid,
         title: _titleCtrl.text.trim(),
-        type: 'discount',
+        type: _type,
         targetSegment: _targetSegment,
         discountRate: _discountRate,
+        productIds: _selectedProductIds.toList(),
         startDate: DateTime.now(),
         endDate: DateTime.now().add(const Duration(days: 7)),
         isActive: true,
       );
 
       await ref.read(sellerOrderRepositoryProvider).createCampaign(campaign);
-
-      // Başarılı olursa listeyi yenile
       ref.invalidate(sellerCampaignsProvider);
 
       if (mounted) {
@@ -88,6 +107,8 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
         setState(() {
           _discountRate = 10;
           _targetSegment = 'all';
+          _type = 'discount';
+          _selectedProductIds.clear();
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -123,6 +144,7 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final campaignsAsync = ref.watch(sellerCampaignsProvider);
+    final productsAsync = ref.watch(sellerProductsProvider);
 
     return Scaffold(
       backgroundColor: softBackground,
@@ -156,7 +178,6 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. BÖLÜM: YENİ KAMPANYA OLUŞTURMA KARTI (PREMIUM TASARIM)
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -205,7 +226,6 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Başlık Alanı
                     TextFormField(
                       controller: _titleCtrl,
                       style: const TextStyle(
@@ -229,8 +249,7 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                         floatingLabelStyle: const TextStyle(
-                          color:
-                              premiumNavy, // Yeşil yerine bizim asil mavi yapıldı
+                          color: premiumNavy,
                           fontWeight: FontWeight.bold,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
@@ -251,7 +270,7 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                           borderSide: const BorderSide(
                             color: premiumNavy,
                             width: 2,
-                          ), // Odaklanınca bizim asil mavi
+                          ),
                         ),
                         errorBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -276,7 +295,83 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // İndirim Oranı
+                    const Text(
+                      'Kampanya Tipi',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Nunito',
+                        fontSize: 14,
+                        color: premiumNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children:
+                          _types.entries.map((entry) {
+                            final isSelected = _type == entry.key;
+                            final typeColor = entry.value['color'] as Color;
+                            return Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _type = entry.key),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isSelected
+                                            ? typeColor.withAlpha(20)
+                                            : softBackground,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color:
+                                          isSelected
+                                              ? typeColor
+                                              : premiumNavy.withAlpha(20),
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        entry.value['icon'] as IconData,
+                                        color:
+                                            isSelected
+                                                ? typeColor
+                                                : premiumNavy.withAlpha(120),
+                                        size: 22,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        entry.value['title'] as String,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontFamily: 'Nunito',
+                                          fontSize: 12,
+                                          fontWeight:
+                                              isSelected
+                                                  ? FontWeight.w800
+                                                  : FontWeight.w600,
+                                          color:
+                                              isSelected
+                                                  ? premiumNavy
+                                                  : premiumNavy.withAlpha(150),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -295,9 +390,7 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: premiumNavy.withAlpha(
-                              20,
-                            ), // Yeşil yerine asil mavi arka plan vurgusu
+                            color: premiumNavy.withAlpha(20),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: premiumNavy.withAlpha(60),
@@ -307,7 +400,7 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                           child: Text(
                             '%${_discountRate.toInt()} İndirim',
                             style: const TextStyle(
-                              color: premiumNavy, // Yeşil yerine asil mavi
+                              color: premiumNavy,
                               fontWeight: FontWeight.w800,
                               fontFamily: 'Nunito',
                               fontSize: 13,
@@ -319,14 +412,11 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                     const SizedBox(height: 6),
                     SliderTheme(
                       data: SliderThemeData(
-                        activeTrackColor:
-                            premiumNavy, // Yeşil yerine asil mavi kaydırma çubuğu
+                        activeTrackColor: premiumNavy,
                         inactiveTrackColor: premiumNavy.withAlpha(15),
-                        thumbColor:
-                            premiumNavy, // Yeşil yerine asil mavi kaydırma butonu
+                        thumbColor: premiumNavy,
                         overlayColor: premiumNavy.withAlpha(30),
-                        valueIndicatorColor:
-                            premiumNavy, // Balon rengi asil mavi
+                        valueIndicatorColor: premiumNavy,
                         valueIndicatorTextStyle: const TextStyle(
                           fontFamily: 'Nunito',
                           color: Colors.white,
@@ -343,7 +433,6 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                     ),
                     const SizedBox(height: 18),
 
-                    // Hedef Kitle Segmentasyonu
                     const Text(
                       'Hedef Kitle Segmentasyonu',
                       style: TextStyle(
@@ -355,7 +444,6 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Modern Segmentasyon Grid/Seçimi
                     GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
@@ -372,12 +460,11 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                                     ? premiumNavy
                                     : (details['color'] as Color);
 
-                            return InkWell(
+                            return GestureDetector(
                               onTap:
                                   () => setState(
                                     () => _targetSegment = entry.key,
                                   ),
-                              borderRadius: BorderRadius.circular(16),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 padding: const EdgeInsets.all(10),
@@ -454,7 +541,87 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Canlıya Al Butonu
+                    const Text(
+                      'Kampanyaya Dahil Ürünler',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Nunito',
+                        fontSize: 14,
+                        color: premiumNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Herhangi bir ürün seçmezseniz kampanya tüm ürünlerinize otomatik uygulanır.',
+                      style: TextStyle(
+                        fontFamily: 'Nunito',
+                        color: premiumNavy.withAlpha(120),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    productsAsync.when(
+                      loading:
+                          () => const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: CircularProgressIndicator(
+                                color: premiumNavy,
+                              ),
+                            ),
+                          ),
+                      error:
+                          (err, _) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              'Ürünler yüklenirken hata oluştu: $err',
+                              style: const TextStyle(
+                                color: dangerRed,
+                                fontFamily: 'Nunito',
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                      data: (products) {
+                        if (products.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              'Henüz kayıtlı bir ürününüz bulunmuyor.',
+                              style: TextStyle(
+                                fontFamily: 'Nunito',
+                                color: premiumNavy.withAlpha(100),
+                                fontSize: 13,
+                              ),
+                            ),
+                          );
+                        }
+                        return Column(
+                          children:
+                              products.map((product) {
+                                final isSelected = _selectedProductIds.contains(
+                                  product.productId,
+                                );
+                                return _ProductCheckTile(
+                                  product: product,
+                                  selected: isSelected,
+                                  onToggle: (id) {
+                                    setState(() {
+                                      if (_selectedProductIds.contains(id)) {
+                                        _selectedProductIds.remove(id);
+                                      } else {
+                                        _selectedProductIds.add(id);
+                                      }
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -485,8 +652,7 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              premiumNavy, // Yeşil yerine bizim asil asil mavi tonumuz yapıldı!
+                          backgroundColor: premiumNavy,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           elevation: 0,
@@ -501,7 +667,6 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
               ),
               const SizedBox(height: 32),
 
-              // 2. BÖLÜM: MEVCUT KAMPANYALARI LİSTELEME
               Row(
                 children: [
                   Container(
@@ -562,36 +727,52 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
                         border: Border.all(color: premiumNavy.withAlpha(15)),
                       ),
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.discount_outlined,
-                            color: premiumNavy.withAlpha(50),
+                            Icons.campaign_outlined,
                             size: 48,
+                            color: premiumNavy.withAlpha(80),
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Şu an aktif bir kampanya tanımlanmamış.',
+                            'Henüz oluşturulmuş kampanya bulunmuyor.',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: premiumNavy.withAlpha(120),
                               fontFamily: 'Nunito',
-                              fontSize: 13,
                               fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: premiumNavy.withAlpha(150),
                             ),
                           ),
                         ],
                       ),
                     );
                   }
-
-                  return ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: campaigns.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final campaign = campaigns[index];
-                      return _CampaignTile(campaign: campaign);
-                    },
+                  return Column(
+                    children:
+                        campaigns.map((c) {
+                          return _CampaignTile(
+                            campaign: c,
+                            onToggle: (id, val) async {
+                              try {
+                                await ref
+                                    .read(sellerOrderRepositoryProvider)
+                                    .toggleCampaign(id, val);
+                                ref.invalidate(sellerCampaignsProvider);
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Güncelleme hatası: $e'),
+                                      backgroundColor: dangerRed,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          );
+                        }).toList(),
                   );
                 },
               ),
@@ -603,181 +784,230 @@ class _SellerCampaignsScreenState extends ConsumerState<SellerCampaignsScreen> {
   }
 }
 
-// Bilet Tasarımlı Kampanya Kartı
-class _CampaignTile extends StatelessWidget {
-  final CampaignModel campaign;
-  const _CampaignTile({required this.campaign});
+class _ProductCheckTile extends StatelessWidget {
+  final ProductModel product;
+  final bool selected;
+  final ValueChanged<String> onToggle;
 
-  static const Color premiumNavy = Color(0xFF041E31);
-  static const Color successGreen = Color(0xFF10B981);
+  const _ProductCheckTile({
+    required this.product,
+    required this.selected,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Aktif durum rozet rengini yeşilde bırakıp geri kalan her şeyi asil lacivert yaptık
-    final statusColor = campaign.isActive ? successGreen : Colors.grey;
+    return GestureDetector(
+      onTap: () => onToggle(product.productId),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color:
+              selected ? const Color(0xFF041E31).withAlpha(10) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? const Color(0xFF041E31) : Colors.grey.shade200,
+            width: selected ? 1.8 : 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              selected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_off_rounded,
+              color: selected ? const Color(0xFF041E31) : Colors.grey.shade400,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                product.name,
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF041E31),
+                ),
+              ),
+            ),
+            Text(
+              '₺${product.price.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                color: Color(0xFF10B981),
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-    // Segment bilgisini biçimlendir
-    String segmentName = 'Tüm Müşteriler';
-    IconData segmentIcon = Icons.groups_rounded;
+class _CampaignTile extends StatelessWidget {
+  final CampaignModel campaign;
+  final Function(String, bool) onToggle;
 
-    if (campaign.targetSegment == 'new') {
-      segmentName = 'Yeni Gelenler';
-      segmentIcon = Icons.person_add_alt_1_rounded;
-    } else if (campaign.targetSegment == 'loyal') {
-      segmentName = 'Sadık Müşteriler';
-      segmentIcon = Icons.star_rounded;
-    } else if (campaign.targetSegment == 'lost') {
-      segmentName = 'Kaybedilenler';
-      segmentIcon = Icons.heart_broken_rounded;
-    }
+  const _CampaignTile({required this.campaign, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    final typeData = _getTypeDetails(campaign.type);
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          // Kenarlık rengi aktif ise hafif asil koyu lacivert tonunda parlar
           color:
               campaign.isActive
-                  ? premiumNavy.withAlpha(45)
-                  : premiumNavy.withAlpha(20),
-          width: 1.2,
+                  ? const Color(0xFF041E31).withAlpha(30)
+                  : Colors.grey.shade200,
+          width: campaign.isActive ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: premiumNavy.withAlpha(8),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+            color: Colors.black.withAlpha(5),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Sol Kısım: İndirim Oranı Rozeti (Bizim asil lacivert tonumuz ağırlıklı yapıldı)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            decoration: BoxDecoration(
-              color: premiumNavy.withAlpha(
-                12,
-              ), // Yeşil yerine asil mavi arka plan
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '%${campaign.discountRate.toInt()}',
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: premiumNavy, // Yeşil yerine bizim asil mavi
-                  ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (typeData['color'] as Color).withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: Icon(
+                  typeData['icon'] as IconData,
+                  color: typeData['color'] as Color,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      campaign.title,
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF041E31),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '%${campaign.discountRate.toInt()} indirim · ${_segmentLabel(campaign.targetSegment)}',
+                      style: TextStyle(
+                        fontFamily: 'Nunito',
+                        color: Colors.grey.shade500,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: campaign.isActive,
+                  activeColor: const Color(0xFF10B981),
+                  activeTrackColor: const Color(0xFF10B981).withAlpha(50),
+                  inactiveThumbColor: Colors.grey.shade400,
+                  inactiveTrackColor: Colors.grey.shade200,
+                  onChanged: (val) => onToggle(campaign.campaignId, val),
+                ),
+              ),
+            ],
+          ),
+          if (campaign.productIds.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Divider(color: Colors.grey.shade100, height: 1),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(
+                  Icons.inventory_rounded,
+                  size: 14,
+                  color: Colors.grey.shade500,
+                ),
+                const SizedBox(width: 6),
                 Text(
-                  'İNDİRİM',
+                  '${campaign.productIds.length} üründe geçerli',
                   style: TextStyle(
                     fontFamily: 'Nunito',
-                    fontSize: 9,
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: premiumNavy.withAlpha(180), // Bizim asil mavi
-                    letterSpacing: 0.5,
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 14),
-
-          // Orta Kısım: Başlık ve Detaylar
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ] else ...[
+            const SizedBox(height: 12),
+            Divider(color: Colors.grey.shade100, height: 1),
+            const SizedBox(height: 10),
+            Row(
               children: [
-                Text(
-                  campaign.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                Icon(
+                  Icons.all_inclusive_rounded,
+                  size: 14,
+                  color: Colors.grey.shade500,
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'Tüm mağaza ürünlerinde geçerli',
+                  style: TextStyle(
                     fontFamily: 'Nunito',
-                    color: premiumNavy,
+                    color: Color(0xFF10B981),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
-                ),
-                const SizedBox(height: 4),
-
-                // Hedef Segment Rozeti
-                Row(
-                  children: [
-                    Icon(
-                      segmentIcon,
-                      size: 13,
-                      color: premiumNavy.withAlpha(120),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      segmentName,
-                      style: TextStyle(
-                        fontFamily: 'Nunito',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: premiumNavy.withAlpha(150),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-
-                // Başlangıç - Bitiş Tarihi
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_month_outlined,
-                      size: 12,
-                      color: premiumNavy.withAlpha(100),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${_formatDate(campaign.startDate)} - ${_formatDate(campaign.endDate)}',
-                      style: TextStyle(
-                        fontFamily: 'Nunito',
-                        fontSize: 10,
-                        color: premiumNavy.withAlpha(120),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
-          ),
-
-          // Sağ Kısım: Aktif/Pasif Rozeti (Başarı durumunu korumak için yeşil bırakıldı)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: statusColor.withAlpha(20),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: statusColor.withAlpha(40), width: 1),
-            ),
-            child: Text(
-              campaign.isActive ? 'Aktif' : 'Pasif',
-              style: TextStyle(
-                color: statusColor,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Nunito',
-              ),
-            ),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  String _formatDate(DateTime dt) {
-    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
+  Map<String, dynamic> _getTypeDetails(String type) {
+    const defaultTypes = {
+      'discount': {'icon': Icons.percent_rounded, 'color': Color(0xFF10B981)},
+      'bundle': {'icon': Icons.inventory_2_rounded, 'color': Color(0xFFF59E0B)},
+      'lost_user': {
+        'icon': Icons.volunteer_activism_rounded,
+        'color': Color(0xFFEF4444),
+      },
+    };
+    return defaultTypes[type] ?? defaultTypes['discount']!;
+  }
+
+  String _segmentLabel(String segment) {
+    const map = {
+      'all': 'Tüm Müşteriler',
+      'new': 'Yeni Gelenler',
+      'loyal': 'Sadık Müşteriler',
+      'lost': 'Kaybedilen Müşteriler',
+    };
+    return map[segment] ?? segment;
   }
 }
