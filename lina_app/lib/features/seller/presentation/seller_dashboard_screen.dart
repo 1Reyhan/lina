@@ -335,7 +335,7 @@ class _SellerDashboardView extends ConsumerWidget {
                       icon: Icons.add_to_photos_outlined,
                       label: 'Ürün Ekle',
                       color: successGreen,
-                      onTap: () => context.push('/seller/products/add'),
+                      onTap: () => context.push('/seller/add-product'),
                     ),
                   ),
                   const SizedBox(width: 12),
