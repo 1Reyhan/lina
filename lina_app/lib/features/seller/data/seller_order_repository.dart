@@ -37,26 +37,32 @@ class SellerOrderRepository {
     }
   }
 
-  // Kampanya oluştur katmanı (İlk adımda ürettiğimiz tip güvenli CampaignModel yapısına entegre edildi)
-  Future<void> createCampaign(CampaignModel campaign) async {
+  // Kampanya oluştur katmanı (Tip güvenli CampaignModel yapısını koruyarak ID döndürecek şekilde güncellendi)
+  Future<String> createCampaign(CampaignModel campaign) async {
     try {
       final ref = _db.collection('campaigns').doc();
       await ref.set({
         ...campaign.toMap(),
         'campaignId': ref.id, // Veri bütünlüğü için iç ID eşitlendi
       });
+      return ref
+          .id; // Sağlayıcılar ve UI katmanında kullanılabilmesi için üretilen ID döndürülüyor
     } catch (e) {
       print('faz3: createCampaign hatası: $e');
       rethrow;
     }
   }
 
-  // Satıcının kampanyalarını dinle (Ham harita yerine güvenli CampaignModel listesi döner)
+  // Satıcının kampanyalarını dinle (CampaignModel listesi döner ve başlangıç tarihine göre azalan sırada listeler)
   Stream<List<CampaignModel>> watchCampaigns(String sellerId) {
     try {
       return _db
           .collection('campaigns')
           .where('sellerId', isEqualTo: sellerId)
+          .orderBy(
+            'startDate',
+            descending: true,
+          ) // Yeni eklenen sıralama kriteri
           .snapshots()
           .map(
             (snap) =>
@@ -64,7 +70,19 @@ class SellerOrderRepository {
           );
     } catch (e) {
       print('faz3: watchCampaigns hatası: $e');
-      return Stream.value([]);
+      return Stream.value([]); // Hata durumunda akışın kopmasını engeller
+    }
+  }
+
+  // Kampanya aktif/pasif durumunu güvenli şekilde güncelle (Yeni eklenen işlev)
+  Future<void> toggleCampaign(String campaignId, bool isActive) async {
+    try {
+      await _db.collection('campaigns').doc(campaignId).update({
+        'isActive': isActive,
+      });
+    } catch (e) {
+      print('faz3: toggleCampaign hatası: $e');
+      rethrow;
     }
   }
 }
