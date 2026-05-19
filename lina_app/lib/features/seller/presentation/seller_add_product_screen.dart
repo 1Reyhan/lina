@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart'; // MobileScanner entegrasyonu
 import '../providers/seller_providers.dart';
@@ -214,28 +213,6 @@ class _SellerAddProductScreenState
     }
   }
 
-  // Resimleri güvenli bir şekilde Firebase Storage'a yükleyip indirme URL'lerini döndüren metotu yazdık bu sayede resim yolları firebase de
-  Future<List<String>> _uploadImages(String sellerId) async {
-    List<String> uploadedUrls = [];
-    for (int i = 0; i < _selectedImages.length; i++) {
-      final File imageFile = _selectedImages[i];
-      // Çakışmayı önlemek için benzersiz bir dosya adı oluşturuyoruz
-      final String fileName = '${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
-
-      final Reference ref = FirebaseStorage.instance
-          .ref()
-          .child('products')
-          .child(sellerId)
-          .child(fileName);
-
-      final UploadTask uploadTask = ref.putFile(imageFile);
-      final TaskSnapshot taskSnapshot = await uploadTask;
-      final String downloadUrl = await taskSnapshot.ref.getDownloadURL();
-      uploadedUrls.add(downloadUrl);
-    }
-    return uploadedUrls;
-  }
-
   Future<void> _save() async {
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
@@ -267,23 +244,21 @@ class _SellerAddProductScreenState
             .toList();
       }
 
-      // 1. Resimleri Firebase Storage'a yüklüyoruz ve internet URL'lerini alıyoruz
-      final List<String> imageUrls = await _uploadImages(uid);
+      final List<String> imageUrls =
+          _selectedImages.map((file) => file.path).toList();
 
       final product = ProductModel(
         productId: '',
         sellerId: uid,
         name: _nameCtrl.text.trim(),
         description: _descCtrl.text.trim(),
-        // 2. Buraya yerel yolları değil, Storage'dan gelen internet URL'lerini veriyoruz
         images:
-            imageUrls.isEmpty ? ['https://via.placeholder.com/300'] : imageUrls,
+            imageUrls.isEmpty ? ['https://via.placeholder.com/150'] : imageUrls,
         barcode: _barcodeCtrl.text.trim(),
         category: _category,
         subCategory: _subCategoryCtrl.text.trim(),
         price: double.tryParse(_priceCtrl.text.trim()) ?? 0.0,
-        discountPrice:
-            0.0, // Kampanyaları satıcı panelinden dinamik yönettiğimiz için burayı sıfırlıyoruz
+        discountPrice: double.tryParse(_discountPriceCtrl.text.trim()) ?? 0.0,
         unit: _unit,
         weight: double.tryParse(_weightCtrl.text.trim()) ?? 0.0,
         stock: int.tryParse(_stockCtrl.text.trim()) ?? 0,
