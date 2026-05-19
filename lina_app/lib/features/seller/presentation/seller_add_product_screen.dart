@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:mobile_scanner/mobile_scanner.dart'; // MobileScanner entegrasyonu
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../providers/seller_providers.dart';
 import '../../../shared/models/product_model.dart';
 
@@ -20,7 +20,6 @@ class _SellerAddProductScreenState
     extends ConsumerState<SellerAddProductScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Model alanlarının tamamını kapsayan kontrolcüler
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
@@ -39,10 +38,8 @@ class _SellerAddProductScreenState
   String _unit = 'adet';
   bool _loading = false;
 
-  // Aktif adım indeksi (0: Fotoğraflar, 1: Temel Bilgiler, 2: Fiyat & Stok, 3: Detaylar)
   int _currentStep = 0;
 
-  // Seçilen resimler
   final List<File> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -58,14 +55,12 @@ class _SellerAddProductScreenState
 
   static const _units = ['kg', 'g', 'adet', 'lt'];
 
-  // Lina Premium lüks koyu lacivert marka rengi ve başarı yeşili
   static const Color premiumNavy = Color(0xFF041E31);
   static const Color successGreen = Color(0xFF10B981);
 
   @override
   void initState() {
     super.initState();
-    // Dinamik yeşil tik işaretleri için form alanlarındaki değişiklikleri anlık dinliyoruz
     _nameCtrl.addListener(() => setState(() {}));
     _priceCtrl.addListener(() => setState(() {}));
     _stockCtrl.addListener(() => setState(() {}));
@@ -92,7 +87,6 @@ class _SellerAddProductScreenState
     super.dispose();
   }
 
-  // Adımların doğruluk/tamamlanma (Yeşil Tik) durumları
   bool get _isStep0Completed => _selectedImages.isNotEmpty;
   bool get _isStep1Completed =>
       _nameCtrl.text.trim().isNotEmpty && _category.isNotEmpty;
@@ -182,7 +176,6 @@ class _SellerAddProductScreenState
     );
   }
 
-  // Barkod Okuyucu kamerasını asil bir arayüzle açan fonksiyon
   Future<void> _startBarcodeScan() async {
     final messenger = ScaffoldMessenger.of(context);
     final scannedCode = await showModalBottomSheet<String>(
@@ -290,7 +283,7 @@ class _SellerAddProductScreenState
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'faz3 Ürün ekleme hatası: $e',
+            'Ürün ekleme hatası: $e',
             style: const TextStyle(fontFamily: 'Nunito'),
           ),
         ),
@@ -302,7 +295,6 @@ class _SellerAddProductScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Koyu asil lacivert temalı premium input dekorasyon üreticisi
     InputDecoration modernInputDecoration(
       String label, {
       String? hint,
@@ -333,7 +325,6 @@ class _SellerAddProductScreenState
         ),
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
-        // Sınır çizgileri çok daha asil, belirgin ve kalın bir lacivert tona kavuşturuldu.
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: premiumNavy, width: 1.8),
@@ -354,7 +345,6 @@ class _SellerAddProductScreenState
       );
     }
 
-    // Adım başlığı ve yeşil tik durumunu barındıran sol çizgi tasarım elemanı
     Widget buildStepIndicator(int stepNumber, String title, bool isCompleted) {
       final bool isActive = _currentStep == stepNumber;
       return GestureDetector(
@@ -441,7 +431,6 @@ class _SellerAddProductScreenState
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        // DÜZELTİLDİ: Geçersiz const Border uyarısı giderildi, 'const' kaldırıldı
         shape: Border(
           bottom: BorderSide(color: premiumNavy.withAlpha(35), width: 1),
         ),
@@ -483,7 +472,6 @@ class _SellerAddProductScreenState
       body: SafeArea(
         child: Column(
           children: [
-            // ÜST ALAN: Yatay Akış Çizgisi ve Adım Başlıkları
             Container(
               color: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -521,7 +509,6 @@ class _SellerAddProductScreenState
               ),
             ),
 
-            // ORTA ALAN: Adım İçerik Formu
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -531,7 +518,6 @@ class _SellerAddProductScreenState
                     duration: const Duration(milliseconds: 250),
                     child:
                         [
-                          // --- ADIM 0: ÜRÜN FOTOĞRAFLARI (Premium Kesikli Kenarlık ve Cam Önizleme Efektleri) ---
                           _FormCard(
                             key: const ValueKey(0),
                             title: 'Ürün Fotoğrafları',
@@ -554,7 +540,6 @@ class _SellerAddProductScreenState
                                   itemCount: _selectedImages.length + 1,
                                   itemBuilder: (context, index) {
                                     if (index == _selectedImages.length) {
-                                      // FOTOĞRAF EKLEME DÜĞMESİ
                                       return InkWell(
                                         onTap: _showImageSourceBottomSheet,
                                         borderRadius: BorderRadius.circular(16),
@@ -606,7 +591,6 @@ class _SellerAddProductScreenState
                                       );
                                     }
 
-                                    // SEÇİLEN FOTOĞRAFLARIN ÖNİZLEME KARTLARI
                                     final file = _selectedImages[index];
                                     return Container(
                                       margin: const EdgeInsets.only(
@@ -687,7 +671,6 @@ class _SellerAddProductScreenState
                             ],
                           ),
 
-                          // --- ADIM 1: TEMEL BİLGİLER (Kamera Entegreli Otomatik Barkod Tarama Mekanizması) ---
                           _FormCard(
                             key: const ValueKey(1),
                             title: 'Temel Bilgiler',
@@ -736,7 +719,6 @@ class _SellerAddProductScreenState
                                 maxLines: 3,
                               ),
                               const SizedBox(height: 14),
-                              // Mobil donanım destekli, EAN-13 barkod okuyan reaktif alan
                               TextFormField(
                                 controller: _barcodeCtrl,
                                 style: const TextStyle(
@@ -819,7 +801,6 @@ class _SellerAddProductScreenState
                             ],
                           ),
 
-                          // --- ADIM 2: FİYAT & STOK YÖNETİMİ ---
                           _FormCard(
                             key: const ValueKey(2),
                             title: 'Fiyat & Stok Yönetimi',
@@ -979,7 +960,6 @@ class _SellerAddProductScreenState
                             ],
                           ),
 
-                          // --- ADIM 3: BESİN DEĞERLERİ & PUANLAMALAR ---
                           _FormCard(
                             key: const ValueKey(3),
                             title: 'Besin Değerleri & Puanlamalar',
@@ -1057,7 +1037,6 @@ class _SellerAddProductScreenState
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              // AI Kamera Destekli İçindekiler Form Alanı (OCR Özelliği Entegre Edildi)
                               TextFormField(
                                 controller: _ingredientsCtrl,
                                 style: const TextStyle(
@@ -1127,10 +1106,8 @@ class _SellerAddProductScreenState
                                       await Future.delayed(
                                         const Duration(seconds: 2),
                                       );
-                                      if (!mounted)
-                                        return; // DÜZELTİLDİ: State tabanlı mounted doğrulaması getirildi
+                                      if (!mounted) return;
                                       setState(() {
-                                        // Ambalaj üzerindeki içindekileri optik karakter tanıma (OCR) yöntemiyle simüle edip yazıyoruz
                                         _ingredientsCtrl.text =
                                             'Domates, Sızma Zeytinyağı, Deniz Tuzu, Sarımsak, Taze Fesleğen';
                                       });
@@ -1157,7 +1134,6 @@ class _SellerAddProductScreenState
               ),
             ),
 
-            // ALT ALAN: Kontrol ve Geçiş Düğmeleri (İnteraktif Akış)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1165,11 +1141,8 @@ class _SellerAddProductScreenState
                 border: Border(top: BorderSide(color: Colors.grey.shade200)),
               ),
               child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment
-                        .spaceBetween, // DÜZELTİLDİ: 'Main => MainAxisAlignment.spaceBetween' yazım hatası giderildi.
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Geri Butonu
                   if (_currentStep > 0)
                     TextButton.icon(
                       onPressed: () {
@@ -1193,7 +1166,6 @@ class _SellerAddProductScreenState
                   else
                     const SizedBox(),
 
-                  // İleri veya Kaydet Butonu
                   ElevatedButton(
                     onPressed:
                         _loading
@@ -1229,7 +1201,6 @@ class _SellerAddProductScreenState
                                 strokeWidth: 2,
                               ),
                             )
-                            // 813. satırdaki const kelimesini sildik:
                             : Text(
                               _currentStep == 3
                                   ? 'Ürünü Mağazaya Ekle'
@@ -1292,7 +1263,6 @@ class _FormCard extends StatelessWidget {
   }
 }
 
-// Fotoğraf ekleme butonunun etrafındaki lüks kesikli çerçeveyi çizen özel sınıf
 class _DashedBorderPainter extends CustomPainter {
   final Color color;
   _DashedBorderPainter({required this.color});
@@ -1333,7 +1303,6 @@ class _DashedBorderPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// YENİLİK: Lina Premium Tasarımlı Yerel Mobil Barkod Tarayıcı Ekran Bileşeni
 class _BarcodeScannerView extends StatefulWidget {
   const _BarcodeScannerView();
 
@@ -1342,7 +1311,6 @@ class _BarcodeScannerView extends StatefulWidget {
 }
 
 class _BarcodeScannerViewState extends State<_BarcodeScannerView> {
-  // DÜZELTİLDİ: Sürüm uyumluluğu için tüm opsiyonel parametreleri kaldırıp defaults ayarlara çektik.
   final MobileScannerController _cameraController = MobileScannerController();
 
   @override
@@ -1378,7 +1346,6 @@ class _BarcodeScannerViewState extends State<_BarcodeScannerView> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // Flaş Düğmesi - DÜZELTİLDİ: Sürüm uyuşmazlığını önlemek için ValueListenableBuilder akışı güncellendi
           IconButton(
             icon: ValueListenableBuilder<MobileScannerState>(
               valueListenable: _cameraController,
@@ -1403,16 +1370,12 @@ class _BarcodeScannerViewState extends State<_BarcodeScannerView> {
               if (barcodes.isNotEmpty) {
                 final String? rawValue = barcodes.first.rawValue?.toString();
                 if (rawValue != null && context.mounted) {
-                  Navigator.pop(
-                    context,
-                    rawValue,
-                  ); // Barkodu modalı açan ana sayfaya gönderir
+                  Navigator.pop(context, rawValue);
                 }
               }
             },
           ),
 
-          // EKRAN GÖRÜNTÜSÜNDEKİ KUSURSUZ HİZALAMA ÇERÇEVESİ (Target Overlay)
           Center(
             child: Container(
               width: mediaQuery.size.width * 0.75,
@@ -1427,13 +1390,11 @@ class _BarcodeScannerViewState extends State<_BarcodeScannerView> {
             ),
           ),
 
-          // Hizalama Rehber Yazısı
           Positioned(
             bottom: mediaQuery.size.height * 0.2,
             left: 0,
             right: 0,
             child: Center(
-              // DÜZELTİLDİ: const_with_non_const hatasını gidermek için buradaki const kaldırıldı
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
@@ -1460,12 +1421,9 @@ class _BarcodeScannerViewState extends State<_BarcodeScannerView> {
     );
   }
 
-  static const Color _overlayColor = Color(
-    0xFF10B981,
-  ); // Şık ve lüks yeşil hizalama çizgisi
+  static const Color _overlayColor = Color(0xFF10B981);
 }
 
-// DÜZELTİLDİ: Sınır rengindeki const çakışmalarını önlemek için asil yardımcı sınıf
 class SideBorderColorHelper {
   static const BorderSide enabledSide = BorderSide(
     color: Color(0x32041E31),
