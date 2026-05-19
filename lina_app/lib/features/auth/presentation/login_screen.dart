@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Canlı kontrol için eklendi
 import '../providers/auth_providers.dart';
+
+const Color kPremiumNavy = Color(0xFF041E31);
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -16,155 +17,143 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _loading = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _emailCtrl.dispose();
-    _passCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-
-    try {
-      // 1. Firebase ile giriş yapılıyor
-      await ref
-          .read(authRepositoryProvider)
-          .signIn(
-            email: _emailCtrl.text.trim(),
-            password: _passCtrl.text.trim(),
-          );
-
-      if (!mounted) return;
-
-      // 2. Canlı kullanıcı kontrolü
-      final user = FirebaseAuth.instance.currentUser;
-
-      if (user != null) {
-        // 3. Rolü çek
-        final role = await ref
-            .read(authRepositoryProvider)
-            .getUserRole(user.uid);
-
-        if (!mounted) return;
-
-        // 4. Doğrudan hedefe yönlendir
-        if (role == 'seller') {
-          context.go('/seller/dashboard');
-        } else {
-          context.go('/home');
-        }
-        return;
-      } else {
-        context.go('/home');
-        return;
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'E-posta veya şifre hatalı';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+      body: Container(
+        // Aşağıdan yukarıya şık bir geçiş
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomLeft,
+            end: Alignment.topRight,
+            colors: [
+              kPremiumNavy,
+              Color(0xFF0A2E4A), // Biraz daha açık bir lacivert tonu
+            ],
+          ),
+        ),
+        child: SafeArea(
           child: Form(
             key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
               children: [
-                const Spacer(),
-                const Text(
-                  'lina',
-                  style: TextStyle(
-                    fontSize: 42,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 4,
+                const SizedBox(height: 60),
+
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Image.asset(
+                      'assets/images/lina.ai.png',
+                      height: 100,
+                      fit: BoxFit.contain,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
+
+                const SizedBox(height: 48),
+
                 const Text(
-                  'Tarladan sofraya, doğrudan sana.',
-                  style: TextStyle(color: Colors.grey),
+                  'Tekrar Hoş Geldiniz',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 48),
-                TextFormField(
-                  controller: _emailCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'E-posta',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator:
-                      (v) => v!.contains('@') ? null : 'Geçerli e-posta girin',
+
+                _buildInput(_emailCtrl, 'E-posta', Icons.email_outlined),
+                const SizedBox(height: 20),
+                _buildInput(
+                  _passCtrl,
+                  'Şifre',
+                  Icons.lock_outline_rounded,
+                  isPass: true,
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Şifre',
-                    border: OutlineInputBorder(),
-                  ),
-                  obscureText: true,
-                  validator: (v) => v!.length >= 6 ? null : 'En az 6 karakter',
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _loading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.green.shade700,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+
+                const SizedBox(height: 32),
+
+                SizedBox(
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _loading ? null : () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: kPremiumNavy,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      'Giriş Yap',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  child:
-                      _loading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                            'Giriş Yap',
-                            style: TextStyle(fontSize: 16),
-                          ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
+
                 TextButton(
                   onPressed: () => context.push('/register'),
-                  child: const Text('Hesabın yok mu? Kayıt ol'),
+                  child: Text(
+                    'Hesabın yok mu? Kayıt ol',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
-                const Spacer(),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInput(
+    TextEditingController ctrl,
+    String label,
+    IconData icon, {
+    bool isPass = false,
+  }) {
+    return TextFormField(
+      controller: ctrl,
+      obscureText: isPass,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+        prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.7)),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.06),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.3),
+            width: 1,
           ),
         ),
       ),

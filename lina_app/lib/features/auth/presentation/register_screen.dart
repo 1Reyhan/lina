@@ -1,58 +1,82 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+const Color kPremiumNavy = Color(0xFF041E31);
+
 class RegisterScreen extends StatelessWidget {
   const RegisterScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Hesap Oluştur'), centerTitle: true),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 32),
-            const Text(
-              'Nasıl devam etmek istersiniz?',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'İhtiyacınıza göre hesap türünü seçin.',
-              style: TextStyle(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 48),
-            // Müşteri kartı
-            _RoleCard(
-              icon: Icons.shopping_cart_outlined,
-              title: 'Alışveriş Yap',
-              subtitle: 'Yerel üreticilerden taze ürünler sipariş et',
-              onTap: () => context.push('/register/user'),
-            ),
-            const SizedBox(height: 16),
-            // Satıcı kartı
-            _RoleCard(
-              icon: Icons.storefront_outlined,
-              title: 'Mağaza Aç',
-              subtitle: 'Ürünlerini doğrudan müşterilere sat',
-              onTap: () => context.push('/register/seller'),
-            ),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Zaten hesabın var mı?'),
-                TextButton(
-                  onPressed: () => context.go('/login'),
-                  child: const Text('Giriş Yap'),
+      // Giriş ekranı ile aynı arka plan yapısı
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomLeft,
+            end: Alignment.topRight,
+            colors: [kPremiumNavy, Color(0xFF0A2E4A)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Geri butonu
+              IconButton(
+                onPressed: () => context.pop(),
+                icon: const Icon(
+                  Icons.arrow_back_ios_rounded,
+                  color: Colors.white,
                 ),
-              ],
-            ),
-          ],
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 20),
+                    Text(
+                      'Taptaze Bir Başlangıç 🌿 🍎 🥑 🥖 🍓 🧺 🍇',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Hangi kimlikle devam edeceksin?',
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 48),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    children: [
+                      _RoleCard(
+                        title: 'Alışveriş Yap',
+                        desc: 'Taze ve yerel ürünleri keşfet',
+                        icon: Icons.shopping_basket_rounded,
+                        onTap: () => context.push('/register/user'),
+                      ),
+                      const SizedBox(height: 20),
+                      _RoleCard(
+                        title: 'Mağaza Aç',
+                        desc: 'Ürünlerini binlerce kişiye ulaştır',
+                        icon: Icons.storefront_rounded,
+                        onTap: () => context.push('/register/seller'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -60,15 +84,14 @@ class RegisterScreen extends StatelessWidget {
 }
 
 class _RoleCard extends StatelessWidget {
+  final String title, desc;
   final IconData icon;
-  final String title;
-  final String subtitle;
   final VoidCallback onTap;
 
   const _RoleCard({
-    required this.icon,
     required this.title,
-    required this.subtitle,
+    required this.desc,
+    required this.icon,
     required this.onTap,
   });
 
@@ -76,24 +99,25 @@ class _RoleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white.withOpacity(0.06), // Modern şeffaf kart efekti
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: Colors.green.shade700, size: 28),
+              child: Icon(icon, size: 28, color: Colors.white),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 20),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,19 +125,27 @@ class _RoleCard extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    subtitle,
-                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                    desc,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: Colors.white.withOpacity(0.5),
+            ),
           ],
         ),
       ),

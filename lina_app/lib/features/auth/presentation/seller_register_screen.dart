@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_providers.dart';
 
+const Color kPremiumNavy = Color(0xFF041E31);
+
 class SellerRegisterScreen extends ConsumerStatefulWidget {
   const SellerRegisterScreen({super.key});
 
@@ -13,167 +15,137 @@ class SellerRegisterScreen extends ConsumerStatefulWidget {
 
 class _SellerRegisterScreenState extends ConsumerState<SellerRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
+  final _storeNameCtrl = TextEditingController();
+  final _ownerNameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
-  final _storeCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _districtCtrl = TextEditingController();
-  String _sellerType = 'bireysel_üretici';
   bool _loading = false;
-  String? _error;
-
-  final _sellerTypes = [
-    {'value': 'bireysel_üretici', 'label': '🌾 Kendi Üretimim'},
-    {'value': 'yerel_market', 'label': '🏪 Yerel İşletmem'},
-    {'value': 'kurumsal', 'label': '📦 Toptan / Kurumsal'},
-  ];
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _emailCtrl.dispose();
-    _passCtrl.dispose();
-    _storeCtrl.dispose();
-    _cityCtrl.dispose();
-    _districtCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      await ref
-          .read(authRepositoryProvider)
-          .registerSeller(
-            email: _emailCtrl.text.trim(),
-            password: _passCtrl.text.trim(),
-            displayName: _nameCtrl.text.trim(),
-            storeName: _storeCtrl.text.trim(),
-            city: _cityCtrl.text.trim(),
-            district: _districtCtrl.text.trim(),
-            sellerType: _sellerType,
-          );
-      if (mounted) {
-        // Satıcı onay bekliyor, bilgilendirme sayfasına git
-        context.go('/seller/pending');
-      }
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
-    } finally {
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mağaza Aç')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomLeft,
+            end: Alignment.topRight,
+            colors: [kPremiumNavy, Color(0xFF0A2E4A)],
+          ),
+        ),
+        child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Satıcı Tipi',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              ..._sellerTypes.map(
-                (t) => RadioListTile<String>(
-                  title: Text(t['label']!),
-                  value: t['value']!,
-                  groupValue: _sellerType,
-                  onChanged: (v) => setState(() => _sellerType = v!),
-                  contentPadding: EdgeInsets.zero,
+              IconButton(
+                onPressed: () => context.pop(),
+                icon: const Icon(
+                  Icons.arrow_back_ios_rounded,
+                  color: Colors.white,
                 ),
               ),
-              const Divider(height: 32),
-              TextFormField(
-                controller: _storeCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Mağaza / Çiftlik Adı',
-                ),
-                validator: (v) => v!.isEmpty ? 'Zorunlu' : null,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _cityCtrl,
-                      decoration: const InputDecoration(labelText: 'Şehir'),
-                      validator: (v) => v!.isEmpty ? 'Zorunlu' : null,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _districtCtrl,
-                      decoration: const InputDecoration(labelText: 'İlçe'),
-                      validator: (v) => v!.isEmpty ? 'Zorunlu' : null,
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(height: 32),
-              TextFormField(
-                controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'Adınız'),
-                validator: (v) => v!.isEmpty ? 'Zorunlu' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'E-posta'),
-                keyboardType: TextInputType.emailAddress,
-                validator:
-                    (v) => v!.contains('@') ? null : 'Geçerli e-posta girin',
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passCtrl,
-                decoration: const InputDecoration(labelText: 'Şifre'),
-                obscureText: true,
-                validator: (v) => v!.length >= 6 ? null : 'En az 6 karakter',
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                Text(_error!, style: const TextStyle(color: Colors.red)),
-              ],
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _register,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.green.shade700,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child:
-                      _loading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                            'Mağazamı Oluştur',
-                            style: TextStyle(fontSize: 16),
+              Expanded(
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    children: [
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Mağaza Oluştur',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Ürünlerini binlerce kişiye ulaştır',
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                      const SizedBox(height: 48),
+
+                      _buildInput(
+                        _storeNameCtrl,
+                        'Mağaza Adı',
+                        Icons.storefront_rounded,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildInput(
+                        _ownerNameCtrl,
+                        'Yetkili Adı',
+                        Icons.person_outline,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildInput(_emailCtrl, 'E-posta', Icons.email_outlined),
+                      const SizedBox(height: 20),
+                      _buildInput(
+                        _passCtrl,
+                        'Şifre',
+                        Icons.lock_outline_rounded,
+                        isPass: true,
+                      ),
+
+                      const SizedBox(height: 48),
+
+                      SizedBox(
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: kPremiumNavy,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
+                          child: const Text(
+                            'Mağazamı Oluştur',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInput(
+    TextEditingController ctrl,
+    String label,
+    IconData icon, {
+    bool isPass = false,
+  }) {
+    return TextFormField(
+      controller: ctrl,
+      obscureText: isPass,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+        prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.7)),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.06),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.3),
+            width: 1,
           ),
         ),
       ),
