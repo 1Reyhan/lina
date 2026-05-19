@@ -1,76 +1,82 @@
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-    
-    // 1. Kullanıcı Temel Bilgileri: Sadece hesabın kendi sahibi okur ve yazar
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-    
-    // 2. Sağlık Profili & Alerjiler: Sadece ilgili kullanıcı okur ve yazar
-    match /userProfiles/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-    
-    // 3. Satıcı Bilgileri: Ürün detaylarında satıcı adını göstermek için herkes okuyabilir, sadece satıcı kendi profilini günceller
-    match /sellers/{uid} {
-      allow read: if true; 
-      allow write: if request.auth != null && request.auth.uid == uid;
-    }
-    
-    // 4. Ürünler: Giriş yapmayan misafirler dahil herkes ürünleri inceleyebilir, sadece girişli kullanıcılar (satıcılar) ürün ekleyebilir/düzenleyebilir
-    match /products/{productId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    
-    // 5. Sepetler: Sadece sepetin asıl sahibi erişebilir
-    match /carts/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-    
-    // 6. Siparişler: Hem siparişi veren Müşteri (userId) hem de siparişi teslim edecek Satıcı (sellerId) okuyabilir ve güncelleyebilir
-    match /orders/{orderId} {
-      allow create: if request.auth != null;
-      
-      // Satıcının siparişleri listeleyebilmesi için sellerId kontrolü eklendi, yetki hatası böylece çözüldü!
-      allow read: if request.auth != null && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.sellerId == request.auth.uid
-      );
-      
-      // Sipariş durumunu (hazırlanıyor, yolda vb.) güncellemek için satıcı ve müşteriye izin verilir
-      allow update: if request.auth != null && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.sellerId == request.auth.uid
-      );
-    }
-    
-    // 7. Kampanyalar: Giriş yapmayan misafirlerin de ana sayfada kampanyaları çökmeden okuyabilmesi için read izni herkese açıldı!
-    match /campaigns/{campaignId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // 8. Değerlendirmeler ve Yorumlar (GÜVENLİ VE SON HALİ):
-    match /reviews/{reviewId} {
-      // Herkes okuyabilir
-      allow read: if true;
-      
-      // Giriş yapmış herkes yorum oluşturabilir
-      allow create: if request.auth != null;
-      
-      // GÜNCELLEME: Sadece Yorumun Sahibi (kendi yorumunu düzenlemek için) 
-      // VEYA Ürünün Satıcısı (yorum sahibine cevap vermek/cevap düzenlemek için) güncelleyebilir.
-      allow update: if request.auth != null && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.sellerId == request.auth.uid
-      );
-      
-      // Sadece yorumu yazan kişi kendi yorumunu silebilir
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
-    }
-    
-  }
+rules_version = '2';service cloud.firestore {match /databases/{database}/documents {// 1. Kullanıcı Temel Bilgileri
+match /users/{uid} {
+  allow read, write: if request.auth != null && request.auth.uid == uid;
 }
+
+// 2. Sağlık Profili & Alerjiler
+match /userProfiles/{uid} {
+  allow read, write: if request.auth != null && request.auth.uid == uid;
+}
+
+// 3. Satıcı Bilgileri
+match /sellers/{uid} {
+  allow read: if true; 
+  allow write: if request.auth != null && request.auth.uid == uid;
+}
+
+// 4. Ürünler
+match /products/{productId} {
+  allow read: if true;
+  allow write: if request.auth != null;
+}
+
+// 5. Sepetler
+match /carts/{uid} {
+  allow read, write: if request.auth != null && request.auth.uid == uid;
+}
+
+// 6. Siparişler
+match /orders/{orderId} {
+  allow create: if request.auth != null;
+  allow read, update: if request.auth != null && (
+    resource.data.userId == request.auth.uid || 
+    resource.data.sellerId == request.auth.uid
+  );
+}
+
+// 7. Kampanyalar
+match /campaigns/{campaignId} {
+  allow read: if true;
+  allow write: if request.auth != null;
+}
+
+// 8. Değerlendirmeler (Reviews)
+match /reviews/{reviewId} {
+  allow read: if request.auth != null;
+  allow create: if request.auth != null;
+  allow update: if request.auth != null && (
+    resource.data.userId == request.auth.uid || 
+    resource.data.sellerId == request.auth.uid
+  );
+  allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+}
+
+// 9. Buzdolabı Öğeleri (Fridge) - KESİN ÇÖZÜM
+match /fridgeItems/{docId} {
+  // Okuma (get/list) ve Silme (delete) işlemlerinde mevcut dokümanın 'uid' alanına bakılır.
+  // Ekleme (create) işleminde gönderilen verinin 'uid' alanına bakılır.
+  // Güncelleme (update) işleminde ise her iki duruma da bakılabilir.
+  allow read, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+  allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+  allow update: if request.auth != null && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
+}
+
+// 10. Bildirimler
+match /notifications/{docId} {
+  // Kullanıcılar sadece kendilerine gelen bildirimleri okuyabilmelidir.
+  // Eğer bildirim dokümanında 'uid' veya 'userId' tutuyorsanız üstteki buzdolabı yapısı gibi kısıtlayabilirsiniz.
+  // Genel şablon için giriş yapma şartı:
+  allow read, write: if request.auth != null;
+}
+
+// 11. Paketler (Bundles)
+match /bundles/{docId} {
+  allow read: if true; // Alıcılar paketleri görebilmeli
+  allow write: if request.auth != null; // Satıcılar paket ekleyip düzenleyebilmeli
+}
+
+// 12. İkmal Kuyruğu (Replenish Queue)
+match /replenishQueue/{docId} {
+  allow read, write: if request.auth != null;
+}
+}}
