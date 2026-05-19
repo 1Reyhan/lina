@@ -97,6 +97,22 @@ class _SellerDashboardView extends ConsumerWidget {
           ],
         ),
         actions: [
+          // LINA AI İkonunu buraya ekledik:
+          GestureDetector(
+            onTap: () => context.push('/ai/chat?seller=true'),
+            child: Padding(
+              padding: const EdgeInsets.only(
+                right: 12,
+              ), // Diğer ikonlarla hizalı olması için
+              child: Image.asset(
+                'assets/images/lina.ai.png', // Dosya yolunun doğru olduğundan emin ol
+                width: 32,
+                height: 32,
+              ),
+            ),
+          ),
+
+          // Bildirim Butonu
           Container(
             margin: const EdgeInsets.only(right: 4),
             decoration: BoxDecoration(
@@ -112,10 +128,14 @@ class _SellerDashboardView extends ConsumerWidget {
               onPressed: () {},
             ),
           ),
+
+          // Çıkış Butonu
           Container(
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: dangerRed.withAlpha(10),
+              color: dangerRed.withAlpha(
+                25,
+              ), // Alpha değerini biraz artırdım daha hoş görünür
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -124,10 +144,9 @@ class _SellerDashboardView extends ConsumerWidget {
                 color: dangerRed,
                 size: 20,
               ),
-              onPressed: () async {
-                await ref.read(authRepositoryProvider).signOut();
-                if (context.mounted) context.go('/login');
-              },
+              tooltip: 'Çıkış Yap',
+              onPressed:
+                  () => _showLogoutDialog(context, ref), // Diyaloğu çağırıyor
             ),
           ),
         ],
@@ -579,6 +598,73 @@ class _SellerDashboardView extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              'Oturumu Kapat',
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontWeight: FontWeight.bold,
+                color: premiumNavy,
+              ),
+            ),
+            content: const Text(
+              'Lina dünyasından çıkış yapmak istediğinize emin misiniz?',
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontWeight: FontWeight.w500,
+                color: premiumNavy,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => context.pop(),
+                child: const Text(
+                  'İptal',
+                  style: TextStyle(
+                    fontFamily: 'Nunito',
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  // Çıkış mantığı (Burada authRepositoryProvider kullandığını gördüm)
+                  await ref.read(authRepositoryProvider).signOut();
+                  if (context.mounted) {
+                    context.go('/login');
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: dangerRed,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Çıkış Yap',
+                  style: TextStyle(
+                    fontFamily: 'Nunito',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
     );
   }
 }
