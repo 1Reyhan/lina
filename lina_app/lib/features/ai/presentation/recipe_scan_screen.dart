@@ -2,13 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
+import 'package:firebase_auth/firebase_auth.dart';
+
+// İlgili modül, model ve sağlayıcı importları
 import '../providers/ai_providers.dart';
 import '../../cart/providers/cart_providers.dart';
 import '../../../shared/models/cart_model.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../../shared/models/product_model.dart';
+// 🌟 DÜZELTİLDİ: ProductRepository'nin gerçek dosya yolu doğrudan import edildi
+import '../../home/data/product_repository.dart';
 
 const Color kPremiumNavy = Color(0xFF041E31);
 const Color kAccentGreen = Color(0xFF2ECC71);
+const Color kLightBackground = Color(0xFFF8FAFC);
+
+// Ürün Arama İşlemleri için ProductRepository Provider Yapısı
+final _productRepoProvider = Provider((ref) => ProductRepository());
+
+// Arama sonuçlarını listeleyen FutureProvider
+final _ingredientSearchProvider =
+    FutureProvider.family<List<ProductModel>, String>((ref, query) async {
+      if (query.isEmpty) return [];
+      final repo = ref.read(_productRepoProvider);
+      // Tüm ürünleri çekip başlıklarında akıllıca filtreleme yapıyoruz
+      final allProducts = await repo.getProducts(category: 'Tümü').first;
+      return allProducts
+          .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
 
 class RecipeScanScreen extends ConsumerStatefulWidget {
   const RecipeScanScreen({super.key});
@@ -21,7 +42,6 @@ class _RecipeScanScreenState extends ConsumerState<RecipeScanScreen> {
   Uint8List? _imageBytes;
   List<String> _ingredients = [];
   bool _loading = false;
-  bool _addingToCart = false;
 
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
@@ -55,68 +75,75 @@ class _RecipeScanScreenState extends ConsumerState<RecipeScanScreen> {
     }
   }
 
-  Future<void> _addAllToCart() async {
-    if (_ingredients.isEmpty) return;
-    setState(() => _addingToCart = true);
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null) {
-      for (final ingredient in _ingredients) {
-        await ref
-            .read(cartRepositoryProvider)
-            .addToCart(
-              uid,
-              CartItemModel(
-                productId: 'ingredient_$ingredient',
-                sellerId: '',
-                name: ingredient,
-                price: 0,
-              ),
-            );
-      }
-    }
-    setState(() => _addingToCart = false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${_ingredients.length} malzeme sepete eklendi!'),
-          backgroundColor: kAccentGreen,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: kLightBackground,
       appBar: AppBar(
         title: const Text(
-          'Lina AI ile Keşfet',
-          style: TextStyle(fontWeight: FontWeight.bold, color: kPremiumNavy),
+          'Tarif Analizi',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: kPremiumNavy,
+            fontFamily: 'Nunito',
+          ),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _ImageSelector(
               imageBytes: _imageBytes,
               onTap: _showImageSourceDialog,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             if (_loading)
               const Center(
-                child: CircularProgressIndicator(color: kAccentGreen),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40.0),
+                  child: Column(
+                    children: [
+                      CircularProgressIndicator(color: kPremiumNavy),
+                      SizedBox(height: 16),
+                      Text(
+                        'Lina AI Malzemeleri Çıkarıyor...',
+                        style: TextStyle(
+                          fontFamily: 'Nunito',
+                          fontWeight: FontWeight.bold,
+                          color: kPremiumNavy,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            if (_ingredients.isNotEmpty)
-              _IngredientsResultView(
-                ingredients: _ingredients,
-                addingToCart: _addingToCart,
-                onAddAll: _addAllToCart,
+            if (_ingredients.isNotEmpty) ...[
+              const Text(
+                'Algılanan Malzemeler ve Mağaza Eşleşmeleri',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: kPremiumNavy,
+                  fontFamily: 'Nunito',
+                ),
               ),
+              const SizedBox(height: 12),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _ingredients.length,
+                itemBuilder: (context, index) {
+                  final ingredient = _ingredients[index];
+                  return _IngredientMatchTile(ingredient: ingredient);
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -126,31 +153,50 @@ class _RecipeScanScreenState extends ConsumerState<RecipeScanScreen> {
   void _showImageSourceDialog() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder:
           (_) => Container(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Tarif Analizi',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  'Görsel Yükle',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: kPremiumNavy,
+                    fontFamily: 'Nunito',
+                  ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 ListTile(
-                  leading: const Icon(Icons.camera_alt, color: kAccentGreen),
-                  title: const Text('Fotoğraf Çek'),
+                  leading: const Icon(Icons.camera_alt, color: kPremiumNavy),
+                  title: const Text(
+                    'Fotoğraf Çek',
+                    style: TextStyle(
+                      fontFamily: 'Nunito',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   onTap: () {
                     Navigator.pop(context);
                     _pickImage(ImageSource.camera);
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.photo_library, color: kAccentGreen),
-                  title: const Text('Galeriden Seç'),
+                  leading: const Icon(Icons.photo_library, color: kPremiumNavy),
+                  title: const Text(
+                    'Galeriden Seç',
+                    style: TextStyle(
+                      fontFamily: 'Nunito',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   onTap: () {
                     Navigator.pop(context);
                     _pickImage(ImageSource.gallery);
@@ -173,33 +219,51 @@ class _ImageSelector extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 240,
+        height: 200,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: kPremiumNavy.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(24),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: kPremiumNavy.withValues(alpha: 0.1)),
+          boxShadow: [
+            BoxShadow(
+              color: kPremiumNavy.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child:
             imageBytes != null
                 ? ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(20),
                   child: Image.memory(imageBytes!, fit: BoxFit.cover),
                 )
                 : Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.add_a_photo,
-                      size: 48,
+                      Icons.add_a_photo_outlined,
+                      size: 40,
                       color: kPremiumNavy,
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      'Tarif Fotoğrafı Yükle',
+                    const Text(
+                      'Yemek veya Malzeme Görseli Yükle',
                       style: TextStyle(
-                        color: kPremiumNavy.withValues(alpha: 0.6),
-                        fontWeight: FontWeight.w600,
+                        color: kPremiumNavy,
+                        fontFamily: 'Nunito',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Yapay zeka malzemeleri bulup mağazadan getirir.',
+                      style: TextStyle(
+                        color: kPremiumNavy.withValues(alpha: 0.5),
+                        fontFamily: 'Nunito',
+                        fontSize: 12,
                       ),
                     ),
                   ],
@@ -209,69 +273,225 @@ class _ImageSelector extends StatelessWidget {
   }
 }
 
-class _IngredientsResultView extends StatelessWidget {
-  final List<String> ingredients;
-  final bool addingToCart;
-  final VoidCallback onAddAll;
-  const _IngredientsResultView({
-    required this.ingredients,
-    required this.addingToCart,
-    required this.onAddAll,
-  });
+/// Her bir çıkarılan malzeme için veritabanında arama yapan ve gerçek ürünleri sunan akıllı Tile
+class _IngredientMatchTile extends ConsumerWidget {
+  final String ingredient;
+  const _IngredientMatchTile({required this.ingredient});
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Algılanan Malzemeler',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: kPremiumNavy,
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...ingredients.map(
-          (ing) => Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Colors.grey.shade200),
-            ),
-            child: ListTile(
-              leading: const Icon(Icons.check_circle, color: kAccentGreen),
-              title: Text(
-                ing,
-                style: const TextStyle(fontWeight: FontWeight.w500),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final searchAsync = ref.watch(_ingredientSearchProvider(ingredient));
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: kPremiumNavy.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.shopping_basket_outlined,
+                color: kAccentGreen,
+                size: 20,
               ),
+              const SizedBox(width: 8),
+              // 🌟 DÜZELTİLDİ: 'const FontWeight.extrabold' ve 'invalid_constant' hatalarını önlemek için 'const' kaldırıldı ve standarda ('FontWeight.w800') çekildi.
+              Text(
+                ingredient.toUpperCase(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'Nunito',
+                  color: kPremiumNavy,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          searchAsync.when(
+            loading:
+                () => const LinearProgressIndicator(
+                  color: kPremiumNavy,
+                  backgroundColor: Colors.black12,
+                ),
+            error:
+                (e, _) => Text(
+                  'Arama Hatası: $e',
+                  style: const TextStyle(fontSize: 11, color: Colors.red),
+                ),
+            data: (products) {
+              if (products.isEmpty) {
+                return Text(
+                  'Mağazada "$ingredient" ile eşleşen ürün bulunamadı.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: kPremiumNavy.withValues(alpha: 0.5),
+                    fontFamily: 'Nunito',
+                  ),
+                );
+              }
+
+              return Column(
+                children:
+                    products.map((product) {
+                      return _ProductMiniTile(product: product);
+                    }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Eşleşen ürünlerin listelendiği ve anında sepete eklenebildiği mini arayüz
+class _ProductMiniTile extends ConsumerWidget {
+  final ProductModel product;
+  const _ProductMiniTile({required this.product});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: kLightBackground,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          // Ürün Görseli
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child:
+                product.images.isNotEmpty
+                    ? Image.network(
+                      product.images.first,
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildFallbackIcon(),
+                    )
+                    : _buildFallbackIcon(),
+          ),
+          const SizedBox(width: 12),
+          // Ürün Adı & Fiyatı
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: kPremiumNavy,
+                    fontFamily: 'Nunito',
+                  ),
+                ),
+                Text(
+                  '${product.effectivePrice.toStringAsFixed(2)} ₺',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: kAccentGreen,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: addingToCart ? null : onAddAll,
+          // Sepete Ekle Butonu
+          ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: kPremiumNavy,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: Text(
-              addingToCart ? 'Ekleniyor...' : 'Tümünü Sepete Ekle',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+            onPressed: () => _addToCart(context, ref),
+            child: const Row(
+              children: [
+                Icon(Icons.add_shopping_cart, size: 14, color: Colors.white),
+                SizedBox(width: 4),
+                Text(
+                  'Ekle',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Nunito',
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
+  }
+
+  Widget _buildFallbackIcon() {
+    return Container(
+      width: 44,
+      height: 44,
+      color: Colors.white,
+      child: const Icon(Icons.shopping_basket, color: kPremiumNavy, size: 20),
+    );
+  }
+
+  Future<void> _addToCart(BuildContext context, WidgetRef ref) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Lütfen önce giriş yapın.')));
+      return;
+    }
+
+    try {
+      await ref
+          .read(cartRepositoryProvider)
+          .addToCart(
+            user.uid,
+            CartItemModel(
+              productId: product.productId,
+              sellerId: product.sellerId,
+              name: product.name,
+              image: product.images.isNotEmpty ? product.images.first : '',
+              price: product.effectivePrice,
+              quantity: 1,
+            ),
+          );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product.name} sepete eklendi! ✔'),
+            backgroundColor: kAccentGreen,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sepete eklenemedi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
