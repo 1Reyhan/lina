@@ -1,34 +1,50 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:lina/shared/models/notification_model.dart'; // Proje isminize uygun tam import yolu
 
 class NotificationRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Kullanıcının kendi bildirimlerini stream olarak dinler.
-  /// Riverpod içinde bu repository'i kullanarak state yönetimi yapabilirsiniz.
-  Stream<List<NotificationModel>> getMyNotifications(String uid) {
+  /// Kullanıcının bildirimlerini gerçek zamanlı izler
+  Stream<List<Map<String, dynamic>>> watchNotifications(String uid) {
     return _firestore
         .collection('notifications')
-        .where('toUid', isEqualTo: uid)
+        .where('userId', isEqualTo: uid)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
           (snapshot) =>
-              snapshot.docs
-                  .map((doc) => NotificationModel.fromFirestore(doc))
-                  .toList(),
+              snapshot.docs.map((doc) {
+                final data = doc.data();
+                return {'id': doc.id, ...data};
+              }).toList(),
         );
   }
 
-  /// Bir bildirimi okundu olarak işaretler.
-  Future<void> markAsRead(String notificationId) async {
-    await _firestore.collection('notifications').doc(notificationId).update({
-      'isRead': true,
-    });
+  /// Bir bildirimi okundu olarak işaretler
+  Future<void> markRead(String notificationId) async {
+    try {
+      await _firestore.collection('notifications').doc(notificationId).update({
+        'isRead': true,
+        'readAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      // Hata yönetimi burada eklenebilir
+      throw Exception('Bildirim güncellenemedi: $e');
+    }
   }
 
-  /// Yeni bildirim oluşturma (Sistem tarafından tetiklenir).
-  Future<void> sendNotification(NotificationModel notification) async {
-    await _firestore.collection('notifications').add(notification.toMap());
+  /// Tüm bildirimleri okundu olarak işaretler
+  Future<void> markAllAsRead(String uid) async {
+    final batch = _firestore.batch();
+    final snapshot =
+        await _firestore
+            .collection('notifications')
+            .where('userId', isEqualTo: uid)
+            .where('isRead', isEqualTo: false)
+            .get();
+
+    for (final doc in snapshot.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+    await batch.commit();
   }
 }
