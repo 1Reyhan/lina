@@ -89,12 +89,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         photo = userData.photoURL;
       }
 
+      // 🌟 DÜZELTİLDİ: ReviewModel'e eklediğimiz yeni zorunlu 'orderId' alanı eklendi
       final review = ReviewModel(
         reviewId: '',
         productId: widget.productId,
         userId: user.uid,
         sellerId:
             product.sellerId, // Ürünün gerçek satıcı kimliği eşleştiriliyor
+        orderId:
+            '', // Soru/Yorum ekranında henüz bir sipariş referansı olmadığı için boş dize geçilir
         displayName: name,
         userPhotoURL: photo,
         rating: 5.0, // Varsayılan puanlama (arayüzde gizlidir)
@@ -107,37 +110,34 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           .collection('reviews')
           .add(review.toMap());
 
+      if (!mounted)
+        return; // 🌟 DÜZELTİLDİ: Context sızıntılarını (async gaps) önlemek için koruma eklendi
+
       _commentCtrl.clear();
       FocusScope.of(context).unfocus();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Soru/Yorumunuz başarıyla gönderildi! ✔',
-              style: TextStyle(
-                fontFamily: 'Nunito',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            backgroundColor: successGreen,
-            behavior: SnackBarBehavior.floating,
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Soru/Yorumunuz başarıyla gönderildi! ✔',
+            style: TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.bold),
           ),
-        );
-      }
+          backgroundColor: successGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Hata: $e',
-              style: const TextStyle(fontFamily: 'Nunito'),
-            ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Hata: $e',
+            style: const TextStyle(fontFamily: 'Nunito'),
           ),
-        );
-      }
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -427,7 +427,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
-  // Trendyol Tarzı Başlık, Fiyat ve Satıcı Bilgi Kartı (Sarı yıldızlar sadeleştirildi)
+  // Trendyol Tarzı Başlık, Fiyat ve Satıcı Bilgi Kartı
   Widget _buildHeaderCard(ProductModel product, int reviewCount) {
     return Container(
       padding: const EdgeInsets.all(18),
@@ -770,7 +770,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
-  // 🌟 DÜZELTİLDİ: Yorumların dikeyde sonsuz uzamasını önleyen, kendi içinde kaydırılabilir (Scrollable) premium alan!
+  // Yorumların dikeyde sonsuz uzamasını önleyen, kendi içinde kaydırılabilir (Scrollable) premium alan
   Widget _buildReviewsSection(List<ReviewModel> reviews, ProductModel product) {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -907,7 +907,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               ),
             )
           else
-            // 🌟 320px Sınırlandırılmış ve Kendi İçinde Kaydırılabilir Liste Alanı (Sonsuz aşağı uzamayı önler)
+            // 320px Sınırlandırılmış ve Kendi İçinde Kaydırılabilir Liste Alanı (Sonsuz dikey taşmayı önler)
             Container(
               constraints: const BoxConstraints(maxHeight: 320),
               padding: const EdgeInsets.only(right: 6),
@@ -1003,7 +1003,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           ],
                         ),
 
-                        // 🏪 TRENDYOL TİPİ SATICI CEVABI GÖSTERİM KATMANI (Nested)
+                        // TRENDYOL TİPİ SATICI CEVABI GÖSTERİM KATMANI (Nested)
                         if (rev.sellerReply != null &&
                             rev.sellerReply!.trim().isNotEmpty) ...[
                           Padding(
