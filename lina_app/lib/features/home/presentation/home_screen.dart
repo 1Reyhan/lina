@@ -5,6 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// İlgili ekran importları
+import '../../fridge/presentation/fridge_screen.dart';
+import '../../ai/presentation/ai_assistant_screen.dart';
+import '../../notifications/presentation/notifications_screen.dart';
+
 import '../data/product_repository.dart';
 import '../../../shared/models/product_model.dart';
 import '../../../shared/models/cart_model.dart';
@@ -70,12 +75,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   final _searchQueryCtrl = TextEditingController();
   String _searchFilterText = '';
 
+  // 📱 Alt Navigasyon Bar Durumu (Seçili Sekme İndeksi)
+  int _currentTabIndex = 0;
+
   // Lina Premium Tasarım Renk Kodları
   static const Color premiumNavy = Color(0xFF041E31);
   static const Color premiumBlueAccent = Color(0xFF0D324E);
   static const Color softBackground = Color(0xFFF8FAFC);
   static const Color successGreen = Color(0xFF10B981);
-  static const Color premiumGold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -116,26 +123,231 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final selectedCat = ref.watch(_selectedCategoryProvider);
+  // Ana Sayfa (Alışveriş Sekmesi) İçeriği - Sizin Eski Kodunuz Tamamen Korundu
+  Widget _buildHomeContent(
+    List<CampaignModel> campaigns,
+    int cartCount,
+    String selectedCat,
+  ) {
     final tabIndex = _homeCategories.indexOf(selectedCat);
     if (tabIndex != -1 && tabIndex != _tabController.index) {
       _tabController.index = tabIndex;
     }
 
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      child:
+          _isSearchActive
+              ? _buildLiveSearchOverlay(campaigns)
+              : NestedScrollView(
+                headerSliverBuilder: (
+                  BuildContext context,
+                  bool innerBoxIsScrolled,
+                ) {
+                  return [
+                    // 1. Üst Başlık - MoreSugar Fontlu LINA Dev Logo
+                    SliverAppBar(
+                      floating: true,
+                      pinned: true,
+                      backgroundColor: Colors.white,
+                      elevation: 0,
+                      scrolledUnderElevation: 1,
+                      surfaceTintColor: Colors.transparent,
+                      leading: IconButton(
+                        icon: const Icon(
+                          Icons.menu_rounded,
+                          color: premiumNavy,
+                          size: 28,
+                        ),
+                        onPressed:
+                            () => _scaffoldKey.currentState?.openDrawer(),
+                      ),
+                      centerTitle: true,
+                      title: const Text(
+                        'LINA',
+                        style: TextStyle(
+                          fontFamily: 'MoreSugar',
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 6,
+                          color: premiumNavy,
+                        ),
+                      ),
+                      actions: [
+                        _buildCartIcon(context, cartCount),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.person_outline_rounded,
+                            color: premiumNavy,
+                            size: 26,
+                          ),
+                          onPressed: () => context.push('/profile'),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+
+                    // 2. Arama Kutusu (Tıklanınca Rota Çakışması Yaşatmadan Arama Durumunu Değiştirir)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        child: GestureDetector(
+                          onTap: () => _openPremiumSearchPage(campaigns),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: premiumNavy.withValues(alpha: 0.08),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: premiumNavy.withValues(alpha: 0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.search_rounded,
+                                  color: premiumNavy,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Ürün veya kategori ara...',
+                                  style: TextStyle(
+                                    color: premiumNavy,
+                                    fontSize: 14,
+                                    fontFamily: 'Nunito',
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // 3. Kategori Filtre Kapsülleri (Swipe kaydırma destekli)
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _SliverCategoryDelegate(
+                        child: Container(
+                          color: softBackground,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: TabBar(
+                            controller: _tabController,
+                            isScrollable: true,
+                            physics: const BouncingScrollPhysics(),
+                            indicator: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [premiumNavy, premiumBlueAccent],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            dividerColor: Colors.transparent,
+                            labelColor: Colors.white,
+                            unselectedLabelColor: premiumNavy.withValues(
+                              alpha: 0.7,
+                            ),
+                            labelStyle: const TextStyle(
+                              fontFamily: 'Nunito',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                            unselectedLabelStyle: const TextStyle(
+                              fontFamily: 'Nunito',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                            tabs:
+                                _homeCategories.map((cat) {
+                                  return Tab(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 18,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(25),
+                                        border: Border.all(
+                                          color:
+                                              _tabController.index ==
+                                                      _homeCategories.indexOf(
+                                                        cat,
+                                                      )
+                                                  ? Colors.transparent
+                                                  : premiumNavy.withValues(
+                                                    alpha: 0.1,
+                                                  ),
+                                        ),
+                                      ),
+                                      child: Align(
+                                        alignment: Alignment.center,
+                                        child: Text(cat),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ];
+                },
+                // 4. Parmakla Sağa-Sola Kaydırılabilir Alan (Dinamik TabBarView)
+                body: TabBarView(
+                  controller: _tabController,
+                  children:
+                      _homeCategories.map((category) {
+                        return _buildProductGrid(category, campaigns);
+                      }).toList(),
+                ),
+              ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedCat = ref.watch(_selectedCategoryProvider);
     final campaignsAsync = ref.watch(_activeCampaignsProvider);
     final cartCount = ref.watch(cartItemCountProvider);
     final campaigns = campaignsAsync.valueOrNull ?? [];
 
+    // Seçilen alt menü indeksine göre gösterilecek ekran listesi
+    final List<Widget> screens = [
+      _buildHomeContent(
+        campaigns,
+        cartCount,
+        selectedCat,
+      ), // 0: Alışveriş (Eski Anasayfa)
+      const FridgeScreen(), // 1: Dijital Buzdolabı
+      const AiAssistantScreen(isSellerMode: false), // 2: Lina AI Asistanı
+      const NotificationsScreen(), // 3: Bildirim Paneli
+    ];
+
     return PopScope(
-      // Arama ekranı açıkken Android geri tuşuna basılırsa önce aramayı kapatır, uygulamayı kitlemez!
-      canPop: !_isSearchActive,
+      // Arama ekranı veya alt sayfalar açıkken Android geri tuşuna basılırsa önce ana sayfaya/aramaya yönlendirir
+      canPop: !_isSearchActive && _currentTabIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
         if (_isSearchActive) {
           setState(() {
             _isSearchActive = false;
             _searchQueryCtrl.clear();
+          });
+        } else if (_currentTabIndex != 0) {
+          setState(() {
+            _currentTabIndex = 0;
           });
         }
       },
@@ -143,223 +355,121 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         key: _scaffoldKey,
         backgroundColor: softBackground,
         drawer:
-            _isSearchActive
+            (_isSearchActive || _currentTabIndex != 0)
                 ? null
                 : _buildPremiumDrawer(
                   context,
-                ), // Arama açıkken çekmece kapatılır
+                ), // Arama açıkken veya farklı tabdayken çekmece kapatılır
         resizeToAvoidBottomInset: false, // Ana sayfada klavye taşmalarını önler
         body: SafeArea(
-          // 🌟 ELEMENT TREE HATALARINI %100 SIFIRLAYAN KÖKLÜ DEĞİŞİKLİK:
-          // Arama aktif olduğunda MaterialPageRoute gibi başka sayfaya geçip context koparmıyoruz.
-          // HomeScreen Scaffold'u içerisindeki body yapısını AnimatedSwitcher ile pürüzsüzce değiştiriyoruz!
-          // Böylece NestedScrollView ve Arama GridView'ı asla çakışamaz!
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child:
-                _isSearchActive
-                    ? _buildLiveSearchOverlay(campaigns)
-                    : NestedScrollView(
-                      headerSliverBuilder: (
-                        BuildContext context,
-                        bool innerBoxIsScrolled,
-                      ) {
-                        return [
-                          // 1. Üst Başlık - MoreSugar Fontlu LINA Dev Logo
-                          SliverAppBar(
-                            floating: true,
-                            pinned: true,
-                            backgroundColor: Colors.white,
-                            elevation: 0,
-                            scrolledUnderElevation: 1,
-                            surfaceTintColor: Colors.transparent,
-                            leading: IconButton(
-                              icon: const Icon(
-                                Icons.menu_rounded,
-                                color: premiumNavy,
-                                size: 28,
-                              ),
-                              onPressed:
-                                  () => _scaffoldKey.currentState?.openDrawer(),
-                            ),
-                            centerTitle: true,
-                            title: const Text(
-                              'LINA',
-                              style: TextStyle(
-                                fontFamily: 'MoreSugar',
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 6,
-                                color: premiumNavy,
-                              ),
-                            ),
-                            actions: [
-                              _buildCartIcon(context, cartCount),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.person_outline_rounded,
-                                  color: premiumNavy,
-                                  size: 26,
-                                ),
-                                onPressed: () => context.push('/profile'),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                          ),
-
-                          // 2. Arama Kutusu (Tıklanınca Rota Çakışması Yaşatmadan Arama Durumunu Değiştirir)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                12,
-                                16,
-                                12,
-                              ),
-                              child: GestureDetector(
-                                onTap: () => _openPremiumSearchPage(campaigns),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: premiumNavy.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: premiumNavy.withValues(
-                                          alpha: 0.03,
-                                        ),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.search_rounded,
-                                        color: premiumNavy,
-                                        size: 22,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Text(
-                                        'Ürün veya kategori ara...',
-                                        style: TextStyle(
-                                          color: premiumNavy,
-                                          fontSize: 14,
-                                          fontFamily: 'Nunito',
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // 3. Kategori Filtre Kapsülleri (Swipe kaydırma destekli)
-                          SliverPersistentHeader(
-                            pinned: true,
-                            delegate: _SliverCategoryDelegate(
-                              child: Container(
-                                color: softBackground,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                child: TabBar(
-                                  controller: _tabController,
-                                  isScrollable: true,
-                                  physics: const BouncingScrollPhysics(),
-                                  indicator: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [premiumNavy, premiumBlueAccent],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(25),
-                                  ),
-                                  indicatorSize: TabBarIndicatorSize.tab,
-                                  dividerColor: Colors.transparent,
-                                  labelColor: Colors.white,
-                                  unselectedLabelColor: premiumNavy.withValues(
-                                    alpha: 0.7,
-                                  ),
-                                  labelStyle: const TextStyle(
-                                    fontFamily: 'Nunito',
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 14,
-                                  ),
-                                  unselectedLabelStyle: const TextStyle(
-                                    fontFamily: 'Nunito',
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                  tabs:
-                                      _homeCategories.map((cat) {
-                                        return Tab(
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 18,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(25),
-                                              border: Border.all(
-                                                color:
-                                                    _tabController.index ==
-                                                            _homeCategories
-                                                                .indexOf(cat)
-                                                        ? Colors.transparent
-                                                        : premiumNavy
-                                                            .withValues(
-                                                              alpha: 0.1,
-                                                            ),
-                                              ),
-                                            ),
-                                            child: Align(
-                                              alignment: Alignment.center,
-                                              child: Text(cat),
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ];
+          child: IndexedStack(index: _currentTabIndex, children: screens),
+        ),
+        // 🌟 PREMIUM ALT MENÜ (BOTTOM NAVIGATION BAR)
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: premiumNavy.withValues(alpha: 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _currentTabIndex,
+            onTap: (index) {
+              setState(() {
+                _currentTabIndex = index;
+              });
+            },
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white,
+            selectedItemColor: premiumNavy,
+            unselectedItemColor: premiumNavy.withValues(alpha: 0.4),
+            selectedLabelStyle: const TextStyle(
+              fontFamily: 'Nunito',
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontFamily: 'Nunito',
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+            elevation: 0,
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.storefront_outlined),
+                activeIcon: Icon(Icons.storefront_rounded),
+                label: 'Market',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.kitchen_outlined),
+                activeIcon: Icon(Icons.kitchen_rounded),
+                label: 'Dolabım',
+              ),
+              BottomNavigationBarItem(
+                // 🌟 LINA AI GÖRSEL İKONU (ÖZEL BOYUTLANDIRILMIŞ VE ASSET ENTEGRASYONLU)
+                icon: Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Opacity(
+                    opacity: _currentTabIndex == 2 ? 1.0 : 0.5,
+                    child: Image.asset(
+                      'assets/images/lina.ai.png',
+                      width: 24,
+                      height: 24,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Asset yüklenemezse kırılmaması için güvenli yedek ikon
+                        return Icon(
+                          Icons.auto_awesome_outlined,
+                          color:
+                              _currentTabIndex == 2
+                                  ? premiumNavy
+                                  : premiumNavy.withValues(alpha: 0.4),
+                        );
                       },
-                      // 4. Parmakla Sağa-Sola Kaydırılabilir Alan (Dinamik TabBarView)
-                      body: TabBarView(
-                        controller: _tabController,
-                        children:
-                            _homeCategories.map((category) {
-                              return _buildProductGrid(category, campaigns);
-                            }).toList(),
-                      ),
                     ),
+                  ),
+                ),
+                activeIcon: Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Image.asset(
+                    'assets/images/lina.ai.png',
+                    width: 24,
+                    height: 24,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.auto_awesome, color: premiumNavy);
+                    },
+                  ),
+                ),
+                label: 'Lina AI',
+              ),
+              BottomNavigationBarItem(
+                icon: Badge(
+                  label: const Text('New', style: TextStyle(fontSize: 8)),
+                  isLabelVisible:
+                      false, // İhtiyaca göre bildirim sayısıyla tetiklenebilir
+                  child: const Icon(Icons.notifications_none_rounded),
+                ),
+                activeIcon: const Icon(Icons.notifications_rounded),
+                label: 'Bildirimler',
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // 🔍 TRENDYOL STİLİNDE ÇÖKMEYEN CANLI ARAMA PANELİ (ELEMENT TREE VE RESIZE SIKINTILARI ARTIK SIFIRLANDI)
+  // 🔍 TRENDYOL STİLİNDE ÇÖKMEYEN CANLI ARAMA PANELİ
   Widget _buildLiveSearchOverlay(List<CampaignModel> campaigns) {
     final searchProductsAsync = ref.watch(_allProductsSearchProvider);
 
     return Container(
-      key: const ValueKey(
-        'LiveSearchOverlayKey',
-      ), // Stabil yapı için anahtar eklendi
+      key: const ValueKey('LiveSearchOverlayKey'), // Stabil yapı için anahtar
       color: Colors.white,
       child: Column(
         children: [
@@ -486,7 +596,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   );
                 }
 
-                // 🌟 DÜZELTİLDİ: ProductCard içindeki Expanded hatasını tamamen sıfırlayan çift sütunlu GridView altyapısı!
                 return GridView.builder(
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.all(16),
@@ -494,8 +603,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     crossAxisCount: 2,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio:
-                        0.63, // Sığma sorunlarını ve taşmaları çözen kusursuz oran
+                    childAspectRatio: 0.63,
                   ),
                   itemCount: filtered.length,
                   itemBuilder: (context, idx) {
@@ -534,7 +642,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               size: 18,
             ),
             const SizedBox(width: 8),
-            Text(
+            const Text(
               'Popüler Kategoriler',
               style: TextStyle(
                 fontFamily: 'Nunito',
@@ -610,16 +718,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             crossAxisCount: 2,
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
-            childAspectRatio:
-                0.63, // Sığma sorunlarını ve taşmaları çözen kusursuz oran
+            childAspectRatio: 0.63,
           ),
           itemCount: products.length,
           itemBuilder: (context, index) {
             final p = products[index];
             return ProductCard(
               product: p,
-              activeCampaigns:
-                  campaigns, // Veritabanındaki gerçek kampanyalar karta paslanır
+              activeCampaigns: campaigns,
               onTap: () => context.push('/product/${p.productId}'),
               onAddToCart: () => _handleAddToCart(context, ref, p, campaigns),
             );
@@ -722,7 +828,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(
-                color: Color(0xFF10B981),
+                color: successGreen,
                 shape: BoxShape.circle,
               ),
               constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
@@ -753,7 +859,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       return;
     }
 
-    // Sepete ekleme esnasında satıcının bu ürüne tanımladığı en yüksek kampanya oranını bul
     double maxDiscount = 0.0;
     for (final camp in campaigns) {
       if (camp.sellerId == p.sellerId) {
@@ -768,7 +873,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
     }
 
-    // İndirimli gerçek fiyatı hesaplar
     final finalPrice =
         maxDiscount > 0
             ? p.effectivePrice * (1 - (maxDiscount / 100))
@@ -792,7 +896,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${p.name} sepete eklendi! ✔'),
-          backgroundColor: const Color(0xFF10B981),
+          backgroundColor: successGreen,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -800,7 +904,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 }
 
-// 🔍 DÜZELTİLDİ: TAM BAĞIMSIZ, REAKTİF VE ÇÖKMEYEN TRENDYOL TİPİ SEÇKİN ARAMA SAYFASI (0 ERROR)
+// 🔍 DÜZELTİLDİ: TAM BAĞIMSIZ ARAMA SAYFASI
 class _LiveSearchPage extends ConsumerStatefulWidget {
   final List<CampaignModel> campaigns;
   const _LiveSearchPage({required this.campaigns});
@@ -841,12 +945,10 @@ class _LiveSearchPageState extends ConsumerState<_LiveSearchPage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      resizeToAvoidBottomInset:
-          true, // 🌟 Klavye açıldığında taşmaları (200 pixel overflow) kesinlikle önler!
+      resizeToAvoidBottomInset: true, // Klavye taşmalarını önler
       body: SafeArea(
         child: Column(
           children: [
-            // Arama Başlığı ve Geri Butonu
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Row(
@@ -911,8 +1013,6 @@ class _LiveSearchPageState extends ConsumerState<_LiveSearchPage> {
               ),
             ),
             const Divider(height: 1),
-
-            // Canlı Filtreleme ve Arama Sonuç Alanı
             Expanded(
               child: searchProductsAsync.when(
                 loading:
@@ -964,17 +1064,16 @@ class _LiveSearchPageState extends ConsumerState<_LiveSearchPage> {
                     );
                   }
 
-                  // 🌟 DÜZELTİLDİ: ProductCard içindeki Expanded hatasını tamamen sıfırlayan çift sütunlu GridView altyapısı!
                   return GridView.builder(
                     physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.all(16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio:
-                          0.63, // Sığma sorunlarını ve taşmaları çözen kusursuz oran
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 16,
+                          crossAxisSpacing: 16,
+                          childAspectRatio: 0.63,
+                        ),
                     itemCount: filtered.length,
                     itemBuilder: (context, idx) {
                       final p = filtered[idx];
@@ -982,7 +1081,6 @@ class _LiveSearchPageState extends ConsumerState<_LiveSearchPage> {
                         product: p,
                         activeCampaigns: widget.campaigns,
                         onTap: () {
-                          // Arama sayfasını kapatıp ürün detayına yönlendirir
                           Navigator.of(context).pop();
                           context.push('/product/${p.productId}');
                         },
@@ -1017,7 +1115,7 @@ class _LiveSearchPageState extends ConsumerState<_LiveSearchPage> {
               size: 18,
             ),
             const SizedBox(width: 8),
-            Text(
+            const Text(
               'Popüler Kategoriler',
               style: TextStyle(
                 fontFamily: 'Nunito',
