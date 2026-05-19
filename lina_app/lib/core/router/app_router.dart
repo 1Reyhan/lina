@@ -21,7 +21,14 @@ import '../../features/orders/presentation/orders_screen.dart';
 import '../../features/orders/presentation/order_detail_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 
-// FAZ3: Satıcı Ekranları (Yönlendirmelerin çalışması için importlar eklendi)
+// AI & Fridge & Notifications Ekranları
+import '../../features/ai/presentation/ai_assistant_screen.dart';
+import '../../features/ai/presentation/barcode_scanner_screen.dart';
+import '../../features/ai/presentation/recipe_scan_screen.dart';
+import '../../features/fridge/presentation/fridge_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
+
+// Satıcı Ekranları
 import '../../features/seller/presentation/seller_dashboard_screen.dart';
 import '../../features/seller/presentation/seller_orders_screen.dart';
 import '../../features/seller/presentation/seller_product_list_screen.dart';
@@ -39,7 +46,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuth = user != null;
       final String currentLoc = state.matchedLocation;
 
-      // Auth ile ilgili rotalar listesi
       final isOnAuth =
           currentLoc == '/login' ||
           currentLoc == '/register' ||
@@ -47,21 +53,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           currentLoc == '/register/seller' ||
           currentLoc == '/splash';
 
-      // Herkese açık sayfalar
       final isPublicPage =
           currentLoc == '/home' || currentLoc.startsWith('/product/');
 
-      // 1. DURUM: Giriş yapmamış misafir kullanıcı korumalı sayfaya sızmaya çalışırsa -> /login
       if (!isAuth && !isOnAuth && !isPublicPage) {
         return '/login';
       }
 
-      // 2. DURUM: Kullanıcı zaten giriş yapmışsa ve içerideki sayfalardaysa
       if (isAuth && !isOnAuth) {
         return null;
       }
 
-      // 3. DURUM: Kullanıcı zaten giriş yapmış ama hala login/register sayfalarında dolanıyorsa -> /home
       if (isAuth && isOnAuth && currentLoc != '/splash') {
         return '/home';
       }
@@ -69,7 +71,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // --- Temel & Ürün Rotaları ---
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
@@ -78,6 +79,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder:
             (_, state) =>
                 ProductDetailScreen(productId: state.pathParameters['id']!),
+      ),
+
+      // --- AI & Buzdolabı & Bildirimler ---
+      GoRoute(
+        path: '/ai/chat',
+        builder: (_, state) {
+          final isSeller = state.uri.queryParameters['seller'] == 'true';
+          return AiAssistantScreen(isSellerMode: isSeller);
+        },
+      ),
+      GoRoute(
+        path: '/ai/barcode',
+        builder: (_, __) => const BarcodeScannerScreen(),
+      ),
+      GoRoute(path: '/ai/recipe', builder: (_, __) => const RecipeScanScreen()),
+      GoRoute(path: '/fridge', builder: (_, __) => const FridgeScreen()),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, __) => const NotificationsScreen(),
       ),
 
       // --- Sepet & Ödeme Rotaları ---
@@ -107,7 +127,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const SellerRegisterScreen(),
       ),
 
-      // --- Satıcı (Seller) Rotaları (FAZ3 EKSİK OLAN KISIM TAMAMLANDI) ---
+      // --- Satıcı (Seller) Rotaları ---
       GoRoute(
         path: '/seller/dashboard',
         builder: (_, __) => const SellerDashboardScreen(),
@@ -149,7 +169,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       ),
                       SizedBox(height: 12),
                       Text(
-                        'Mağazanız incelendikten sonra aktif edilecek. Genellikle 24 saat içinde sonuçlanır.',
+                        'Mağazanız incelendikten sonra aktif edilecek.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey),
                       ),
