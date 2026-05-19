@@ -1,62 +1,104 @@
-import 'dart:convert'; // 🌟 DÜZELTİLDİ: jsonDecode işlemleri için standart kütüphane eklendi
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 class GeminiRepository {
-  late final GenerativeModel _model;
-  late final GenerativeModel _visionModel;
+  late final String _apiKey;
+
+  // 🌟 2026 standartlarına uygun en güncel ve kararlı model listesi
+  final List<String> _modelCandidates = [
+    'gemini-1.5-flash-latest', // En kararlı son güncel 1.5 sürümü
+    'gemini-2.5-flash', // Yeni nesil yüksek performanslı flash modeli
+    'gemini-1.5-flash', // Eski standart model (yedek)
+    'gemini-1.5-pro', // Gelişmiş pro modeli (nihai yedek)
+  ];
 
   GeminiRepository() {
-    final key = dotenv.env['GEMINI_API_KEY'] ?? '';
-    _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: key);
-    _visionModel = GenerativeModel(model: 'gemini-1.5-flash', apiKey: key);
+    _apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
   }
 
-  // ── 1. Serbest sohbet / asistan ──
-  Future<String> chat(String message, {String? systemContext}) async {
-    try {
-      final prompt =
-          systemContext != null
-              ? '$systemContext\n\nKullanıcı: $message'
-              : message;
-      final response = await _model.generateContent([Content.text(prompt)]);
-      return response.text ?? 'Yanıt alınamadı.';
-    } catch (e) {
-      return 'Hata oluştu: $e';
+  /// Belirtilen model ismiyle dinamik olarak GenerativeModel nesnesi oluşturur
+  GenerativeModel _createModel(String modelName) {
+    return GenerativeModel(model: modelName, apiKey: _apiKey);
+  }
+
+  // ── 1. Serbest sohbet / asistan (Görsel ve Metin Bir Arada Destekler!) ──
+  Future<String> chat(
+    String message, {
+    String? systemContext,
+    Uint8List? imageBytes,
+  }) async {
+    final prompt =
+        systemContext != null
+            ? '$systemContext\n\nKullanıcı: $message'
+            : message;
+
+    // Modelleri sırayla dener, çalışan ilk modeli kullanır
+    for (String modelName in _modelCandidates) {
+      try {
+        final model = _createModel(modelName);
+        GenerateContentResponse response;
+
+        if (imageBytes != null) {
+          // Eğer görsel varsa, çoklu ortam (multimodal) isteği gönderilir
+          response = await model.generateContent([
+            Content.multi([
+              TextPart(prompt),
+              DataPart('image/jpeg', imageBytes),
+            ]),
+          ]);
+        } else {
+          // Sadece metin varsa standart istek gönderilir
+          response = await model.generateContent([Content.text(prompt)]);
+        }
+
+        if (response.text != null && response.text!.isNotEmpty) {
+          return response.text!;
+        }
+      } catch (e) {
+        // Hata konsola basılır ama kullanıcıya hissettirilmeden bir sonraki model denenir
+        print(
+          'Lina AI: $modelName başarısız oldu, sonraki model deneniyor. Hata: $e',
+        );
+      }
     }
+    return 'Üzgünüm, şu anda Lina AI sunucularına bağlanılamıyor. Lütfen internet bağlantınızı veya API anahtarınızı kontrol edin.';
   }
 
-  // ── 2. Görsel analiz — yemek fotoğrafından malzeme listesi ──
+  // ── 2. Görsel analiz — yemek fotoğrafından malzeme listesi (Yedekli Çalışır) ──
   Future<List<String>> analyzeRecipeImage(Uint8List imageBytes) async {
-    try {
-      final prompt = '''
+    final prompt = '''
 Bu yemek fotoğrafına bak. İçindeki malzemeleri listele.
 SADECE JSON formatında döndür, başka hiçbir şey yazma:
 {"ingredients": ["malzeme1", "malzeme2", "malzeme3"]}
 ''';
-      final response = await _visionModel.generateContent([
-        Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
-      ]);
-      final text = response.text ?? '{"ingredients":[]}';
 
-      // 🌟 DÜZELTİLDİ: Manuel regex temizleme yerine güvenli JSON çözümlemesi
-      final parsed = _parseJson(text);
-      final ingredients = parsed['ingredients'];
-      if (ingredients is List) {
-        return ingredients.map((e) => e.toString()).toList();
+    for (String modelName in _modelCandidates) {
+      try {
+        final model = _createModel(modelName);
+        final response = await model.generateContent([
+          Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
+        ]);
+
+        final text = response.text ?? '{"ingredients":[]}';
+        final parsed = _parseJson(text);
+        final ingredients = parsed['ingredients'];
+        if (ingredients is List) {
+          return ingredients.map((e) => e.toString()).toList();
+        }
+      } catch (e) {
+        print(
+          'Lina AI: $modelName görsel analizi başaramadı, sıradaki deneniyor. Hata: $e',
+        );
       }
-      return [];
-    } catch (e) {
-      print('Lina AI Error (analyzeRecipeImage): $e');
-      return [];
     }
+    return [];
   }
 
-  // ── 3. Ürün paketi/etiketi analizi — satıcı için ──
+  // ── 3. Ürün paketi/etiketi analizi — satıcı için (Yedekli Çalışır) ──
   Future<Map<String, dynamic>> analyzeProductLabel(Uint8List imageBytes) async {
-    try {
-      final prompt = '''
+    final prompt = '''
 Bu ürün etiketini veya paketini analiz et.
 SADECE JSON formatında döndür:
 {
@@ -69,15 +111,22 @@ SADECE JSON formatında döndür:
   "description": "SEO uyumlu açıklama"
 }
 ''';
-      final response = await _visionModel.generateContent([
-        Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
-      ]);
-      final text = response.text ?? '{}';
-      return _parseJson(text);
-    } catch (e) {
-      print('Lina AI Error (analyzeProductLabel): $e');
-      return {};
+
+    for (String modelName in _modelCandidates) {
+      try {
+        final model = _createModel(modelName);
+        final response = await model.generateContent([
+          Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
+        ]);
+        final text = response.text ?? '{}';
+        return _parseJson(text);
+      } catch (e) {
+        print(
+          'Lina AI: $modelName etiket analizi başaramadı, sıradaki deneniyor. Hata: $e',
+        );
+      }
     }
+    return {};
   }
 
   // ── 4. Tarif kişiselleştirme ──
@@ -88,8 +137,7 @@ SADECE JSON formatında döndür:
     required List<String> healthConditions,
     required int portions,
   }) async {
-    try {
-      final prompt = '''
+    final prompt = '''
 Kullanıcı profili:
 - Alerjiler: ${allergies.isEmpty ? 'yok' : allergies.join(', ')}
 - Diyet: ${dietTypes.isEmpty ? 'yok' : dietTypes.join(', ')}
@@ -100,27 +148,38 @@ Kullanıcı profili:
 Türkçe yaz. Malzemeleri ve adımları listele.
 Önemli değişiklikleri belirt (örn: "gluten içeren un yerine pirinç unu kullandım").
 ''';
-      final response = await _model.generateContent([Content.text(prompt)]);
-      return response.text ?? 'Tarif oluşturulamadı.';
-    } catch (e) {
-      return 'Hata: $e';
+
+    for (String modelName in _modelCandidates) {
+      try {
+        final model = _createModel(modelName);
+        final response = await model.generateContent([Content.text(prompt)]);
+        if (response.text != null) return response.text!;
+      } catch (e) {
+        print('Lina AI: $modelName tarif kişiselleştirme hatası: $e');
+      }
     }
+    return 'Tarif özelleştirilemedi.';
   }
 
   // ── 5. Buzdolabı önerisi ──
   Future<String> suggestFromFridge(List<String> availableItems) async {
-    try {
-      final prompt = '''
+    final prompt = '''
 Buzdolabında şu malzemeler var: ${availableItems.join(', ')}.
 Bu malzemelerle yapılabilecek 3 yemek öner.
 Türkçe, kısa ve pratik yaz.
 Her öneri için: yemek adı ve neden bu malzemelerin uygun olduğunu söyle.
 ''';
-      final response = await _model.generateContent([Content.text(prompt)]);
-      return response.text ?? 'Öneri oluşturulamadı.';
-    } catch (e) {
-      return 'Hata: $e';
+
+    for (String modelName in _modelCandidates) {
+      try {
+        final model = _createModel(modelName);
+        final response = await model.generateContent([Content.text(prompt)]);
+        if (response.text != null) return response.text!;
+      } catch (e) {
+        print('Lina AI: $modelName dolap öneri hatası: $e');
+      }
     }
+    return 'Öneri oluşturulamadı.';
   }
 
   // ── 6. Barkod / ürün sağlık analizi ──
@@ -129,8 +188,7 @@ Her öneri için: yemek adı ve neden bu malzemelerin uygun olduğunu söyle.
     required List<String> ingredients,
     required List<String> userAllergies,
   }) async {
-    try {
-      final prompt = '''
+    final prompt = '''
 Ürün: $productName
 İçindekiler: ${ingredients.join(', ')}
 Kullanıcı alerjileri: ${userAllergies.isEmpty ? 'yok' : userAllergies.join(', ')}
@@ -141,14 +199,20 @@ Bu ürünü analiz et:
 3. Genel sağlık puanı ver (1-10)
 Türkçe, kısa ve anlaşılır yaz.
 ''';
-      final response = await _model.generateContent([Content.text(prompt)]);
-      return response.text ?? 'Analiz yapılamadı.';
-    } catch (e) {
-      return 'Hata: $e';
+
+    for (String modelName in _modelCandidates) {
+      try {
+        final model = _createModel(modelName);
+        final response = await model.generateContent([Content.text(prompt)]);
+        if (response.text != null) return response.text!;
+      } catch (e) {
+        print('Lina AI: $modelName sağlık analizi hatası: $e');
+      }
     }
+    return 'Analiz yapılamadı.';
   }
 
-  // 🌟 YENİ: Gemini'ın bazen markdown kod bloklarıyla sardığı JSON metnini temizleyen yardımcı metot
+  // 🌟 Markdown kod bloklarıyla sardığı JSON metnini temizleyen yardımcı metot
   String _cleanMarkdownJson(String text) {
     var clean = text.trim();
     if (clean.startsWith('```json')) {
@@ -162,7 +226,7 @@ Türkçe, kısa ve anlaşılır yaz.
     return clean.trim();
   }
 
-  // 🌟 DÜZELTİLDİ: 'import_dart_convert' etiket hatasını kaldıran güvenli ve yedekli JSON dönüştürücü
+  // 🌟 Güvenli ve yedekli JSON dönüştürücü
   Map<String, dynamic> _parseJson(String text) {
     try {
       final cleaned = _cleanMarkdownJson(text);
