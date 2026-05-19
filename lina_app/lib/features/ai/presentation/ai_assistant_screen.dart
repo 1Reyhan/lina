@@ -56,6 +56,35 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
     );
   }
 
+  // Yönlendirme butonlarını oluşturan yardımcı widget
+  Widget _buildQuickAction(String title, IconData icon, String route) {
+    return GestureDetector(
+      onTap: () => context.push(route),
+      child: Container(
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: kPremiumNavy.withValues(alpha: 0.1)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: kPremiumNavy),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: kPremiumNavy,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source, imageQuality: 80);
@@ -145,6 +174,25 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
       ),
       body: Column(
         children: [
+          // Sadece kullanıcı modundaysa yönlendirme butonlarını göster
+          if (!widget.isSellerMode)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  _buildQuickAction(
+                    'Tarif Analizi',
+                    Icons.auto_stories,
+                    '/ai/recipe',
+                  ),
+                  _buildQuickAction(
+                    'Barkod Tara',
+                    Icons.qr_code_scanner,
+                    '/ai/barcode',
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: ListView.builder(
               controller: _scroll,
@@ -209,7 +257,6 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
 
   Widget _buildInput() {
     return Container(
-      // HATA DÜZELTİLDİ: 'const' kaldırıldı ve MediaQuery dinamik olarak hesaplandı
       padding: EdgeInsets.only(
         left: 12,
         right: 12,
