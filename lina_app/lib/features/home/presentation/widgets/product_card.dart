@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../shared/models/product_model.dart';
 import '../../../../shared/models/campaign_model.dart';
-import '../../../../shared/models/seller_model.dart';
 
 class ProductCard extends StatelessWidget {
   final ProductModel product;
@@ -28,8 +27,7 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🔍 Satıcının bu spesifik ürüne veya genel olarak mağazasına uyguladığı kampanyayı buluyoruz
-    CampaignModel? matchedCampaign;
+    // Satıcının bu spesifik ürüne veya genel olarak mağazasına uyguladığı kampanyayı buluyoruz
     double maxDiscount = 0.0;
 
     for (final camp in activeCampaigns) {
@@ -42,7 +40,6 @@ class ProductCard extends StatelessWidget {
         if (appliesToAll || appliesToThisProduct) {
           if (camp.discountRate > maxDiscount) {
             maxDiscount = camp.discountRate;
-            matchedCampaign = camp;
           }
         }
       }
@@ -52,19 +49,6 @@ class ProductCard extends StatelessWidget {
     final bool hasCampaign = maxDiscount > 0;
     final double finalPrice =
         hasCampaign ? originalPrice * (1 - (maxDiscount / 100)) : originalPrice;
-
-    // Resim varlık ve yol kontrolü
-    final bool hasImage =
-        product.images.isNotEmpty && product.images.first.isNotEmpty;
-    final String imagePath = hasImage ? product.images.first : '';
-
-    // Resmin internet adresi mi yoksa telefondaki yerel bir dosya mı olduğunu tespit ediyoruz
-    final bool isNetworkImage =
-        imagePath.startsWith('http://') || imagePath.startsWith('https://');
-    final bool isLocalFile =
-        imagePath.startsWith('file://') ||
-        imagePath.startsWith('/') ||
-        imagePath.contains('data/user/');
 
     return GestureDetector(
       onTap: onTap,
@@ -89,9 +73,9 @@ class ProductCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Ürün Görseli Alanı (Yerel Dosya ve Internet Linki Destekli Kusursuz Yapı)
+                // 1. Ürün Görseli Alanı (Çökmeleri ve dikeyde sıkışmaları önleyen korunaklı yapı)
                 Expanded(
-                  flex: 11,
+                  flex: 12,
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(18),
@@ -99,28 +83,8 @@ class ProductCard extends StatelessWidget {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        if (isNetworkImage)
-                          Image.network(
-                            imagePath,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return _buildPlaceholderShimmer();
-                            },
-                            errorBuilder:
-                                (_, __, ___) => _buildPlaceholderShimmer(),
-                          )
-                        else if (isLocalFile)
-                          Image.file(
-                            File(imagePath.replaceFirst('file://', '')),
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder:
-                                (_, __, ___) => _buildPlaceholderShimmer(),
-                          )
-                        else
-                          _buildPlaceholderShimmer(),
+                        // 🌟 DÜZELTİLDİ: Yapay Unsplash fallback adresleri kaldırılarak LINA logolu asil lacivert şablon arka planımız geri getirildi!
+                        _buildProductImage(),
 
                         // Degradeli Gölgelendirme (Kartın üstündeki rozetlerin okunabilirliği için)
                         Positioned.fill(
@@ -128,9 +92,9 @@ class ProductCard extends StatelessWidget {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Colors.black.withValues(alpha: 0.08),
+                                  Colors.black.withValues(alpha: 0.12),
                                   Colors.transparent,
-                                  Colors.black.withValues(alpha: 0.03),
+                                  Colors.black.withValues(alpha: 0.05),
                                 ],
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
@@ -187,9 +151,13 @@ class ProductCard extends StatelessWidget {
                                       .get(),
                               builder: (context, snapshot) {
                                 if (snapshot.hasData && snapshot.data!.exists) {
-                                  final seller = SellerModel.fromFirestore(
-                                    snapshot.data!,
-                                  );
+                                  final d =
+                                      snapshot.data!.data()
+                                          as Map<String, dynamic>? ??
+                                      {};
+                                  final storeName =
+                                      d['storeName'] ?? 'Lina Mağazası';
+                                  final city = d['city'] ?? 'Malatya';
                                   return Row(
                                     children: [
                                       const Icon(
@@ -200,7 +168,7 @@ class ProductCard extends StatelessWidget {
                                       const SizedBox(width: 4),
                                       Expanded(
                                         child: Text(
-                                          '${seller.storeName} (${seller.city})',
+                                          '$storeName ($city)',
                                           style: const TextStyle(
                                             fontFamily: 'Nunito',
                                             color: premiumBlueAccent,
@@ -249,7 +217,7 @@ class ProductCard extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // İstek üzerine ekstra indirim çizgi/oran kalabalığı kaldırıldı, sadece net fiyat gösteriliyor
+                                  // Net fiyat gösterimi
                                   Text(
                                     '₺${finalPrice.toStringAsFixed(2)}',
                                     style: const TextStyle(
@@ -295,6 +263,63 @@ class ProductCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // 🌟 DÜZELTİLDİ: Orijinal Lina temalı asil lacivert logo ve arka plan şablonunu gösteren görsel yapısı
+  Widget _buildProductImage() {
+    // Resim varlık ve yol kontrolü
+    final bool hasImage =
+        product.images.isNotEmpty && product.images.first.trim().isNotEmpty;
+    final String imagePath = hasImage ? product.images.first.trim() : '';
+
+    final bool isNetworkImage =
+        hasImage &&
+        (imagePath.startsWith('http://') || imagePath.startsWith('https://'));
+    final bool isLocalFile =
+        hasImage &&
+        !isNetworkImage &&
+        (imagePath.startsWith('file://') ||
+            imagePath.startsWith('/') ||
+            imagePath.contains('data/user/'));
+
+    // 1. Durum: Eğer geçerli bir internet adresi ise (ve bozuk placeholder sitesi değilse) okumaya çalışır
+    if (isNetworkImage &&
+        !imagePath.contains('placeholder.com') &&
+        !imagePath.contains('via.placeholder')) {
+      return Image.network(
+        imagePath,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _buildPlaceholderShimmer();
+        },
+        errorBuilder: (_, __, ___) {
+          // Handshake veya SSL hatası durumunda dahi orijinal Lina logo şablonuna düşer
+          return _buildPlaceholderShimmer();
+        },
+      );
+    }
+
+    // 2. Durum: Eğer yerel bir dosya yolu ise, telefonun hafızasında fiziksel olarak var olup olmadığı sorgulanır
+    if (isLocalFile) {
+      final cleanPath = imagePath.replaceFirst('file://', '');
+      final file = File(cleanPath);
+
+      // Dosya telefonda fiziksel olarak duruyorsa pürüzsüzce yükler
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildPlaceholderShimmer(),
+        );
+      }
+    }
+
+    // 3. Fallback Durumu: Eğer görsel yoksa, telefondan silinmişse veya bozuk placeholder linki ise
+    // Lina Premium logolu asil koyu lacivert şablon çizilir!
+    return _buildPlaceholderShimmer();
   }
 
   Widget _scoreBadge(IconData icon, String score, Color color) {
@@ -344,7 +369,7 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // Yükleme veya hata durumunda Lina markasının lüks geçişli şablonu
+  // 🌟 Orijinal Lina Premium Koyu Lacivert Yaprak Logolu Harika Şablon Tasarımı
   Widget _buildPlaceholderShimmer() {
     return Container(
       decoration: const BoxDecoration(
