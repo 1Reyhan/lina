@@ -1,6 +1,4 @@
-# baypos
-
-# Proje Adı
+# LINA
 
 ![LINA](images/1.png)
 
