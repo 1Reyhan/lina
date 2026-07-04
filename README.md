@@ -2,16 +2,17 @@
 
 # Proje Adı
 
-![BAYPOS](images/1.png)
+![LINA](images/1.png)
 
 ## Özet
-[Küçük ve orta ölçekli işletmelerin satış, stok ve müşteri yönetimini dijitalleştirmeyi amaçlayan AI destekli bir ekosistemdir.
-Perakende sektöründe edinilen 6 aylık saha tecrübesi ve doğrudan gözlemlenen işletme ihtiyaçları doğrultusunda tasarlanan proje;
-offline-first mimari, mobil barkod okuma ve satış verilerini analiz eden
-"Akıllı Asistan
+Gıda israfını önleyen
+"Dijital Buzdolabı
 "
-modülü üzerine kurgulanmıştır. Geliştirilen
-bu yenilikçi çözüm, MTÜ 2. AR-GE Proje Pazarı Mühendislik ve Fen Bilimleri alanında 1.’lik ödülüne layık görülmüştür]
+ve çok modlu (multimodal) AI asistanı ile donatılmış hibrit bir ekosistemdir. Rol bazlı
+yönlendirme mimarisiyle; kullanıcıya görselden otomatik malzeme/tarif analizi, kişiselleştirilmiş diyet/alerjen filtreleme ve
+doğrudan sipariş imkânı sunarken, satıcıya veri odaklı yönetim paneli sağlar. IndexedStack mimarisi, güvenli Firestore altyapısı ve
+gelişmiş AI entegrasyonları ile uçtan uca ölçeklenebilir ve dayanıklı bir sistem olarak geliştirilmiştir.
+
 
 ## Öne Çıkanlar
 ![Özellikler](images/2.png)
@@ -25,4 +26,7 @@ bu yenilikçi çözüm, MTÜ 2. AR-GE Proje Pazarı Mühendislik ve Fen Bilimler
 ![Özellikler](images/10.png)
 ![Özellikler](images/11.png)
 ![Özellikler](images/12.png)
+![Özellikler](images/13.png)
+![Özellikler](images/14.png)
 ![Özellikler](images/15.png)
+![Özellikler](images/16.png)
